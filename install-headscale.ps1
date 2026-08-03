@@ -1,4 +1,4 @@
-# install-headscale.ps1 v2.4.1 – Windows
+# install-headscale.ps1 v2.4.2 – Windows
 # Headscale Auto-Installer with .env, backup, pre-checks, upgrade, multi-env, UI
 # Licensed under MIT License
 
@@ -123,21 +123,24 @@ function Test-DiskSpace {
     $minSpaceMB = 100
     Write-Host "💾 Checking disk space (need at least ${minSpaceMB}MB)..." -ForegroundColor Cyan
     
-    # Correction: Extraire correctement la lettre de lecteur
-    $driveLetter = if ($Path -match '^([A-Za-z]):') { $matches[1] } else { "C" }
+    # Extraire correctement la lettre de lecteur
+    $driveLetter = "C"
+    if ($Path -match '^([A-Za-z]):') {
+        $driveLetter = $matches[1]
+    }
     
     try {
         $drive = Get-PSDrive -Name $driveLetter -ErrorAction Stop
         $freeSpaceMB = [math]::Round($drive.Free / 1MB, 0)
         
         if ($drive.Free -lt ($minSpaceMB * 1MB)) {
-            Write-Host "❌ Error: Insufficient disk space on drive $driveLetter:\. At least ${minSpaceMB}MB required." -ForegroundColor Red
-            Write-Host "   Available: $freeSpaceMB MB" -ForegroundColor Yellow
+            Write-Host "❌ Error: Insufficient disk space on drive ${driveLetter}:\. At least ${minSpaceMB}MB required." -ForegroundColor Red
+            Write-Host "   Available: ${freeSpaceMB} MB" -ForegroundColor Yellow
             exit 1
         }
-        Write-Host "✅ Disk space OK ($freeSpaceMB MB available)." -ForegroundColor Green
+        Write-Host "✅ Disk space OK (${freeSpaceMB} MB available)." -ForegroundColor Green
     } catch {
-        Write-Host "⚠️  Warning: Could not check disk space for drive $driveLetter:\. Assuming sufficient space." -ForegroundColor Yellow
+        Write-Host "⚠️  Warning: Could not check disk space for drive ${driveLetter}:\. Assuming sufficient space." -ForegroundColor Yellow
     }
 }
 
@@ -308,7 +311,7 @@ function Generate-APIKey {
 
 # ========== MAIN ==========
 Write-Host ""
-Write-Host "🚀 Headscale Auto-Installer v2.4" -ForegroundColor Cyan
+Write-Host "🚀 Headscale Auto-Installer v2.4.2" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
