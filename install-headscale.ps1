@@ -1,4 +1,4 @@
-# install-headscale.ps1 v2.4 – Windows
+# install-headscale.ps1 v2.4.1 – Windows
 # Headscale Auto-Installer with .env, backup, pre-checks, upgrade, multi-env, UI
 # Licensed under MIT License
 
@@ -122,12 +122,23 @@ function Test-DiskSpace {
     param([string]$Path = "C:\")
     $minSpaceMB = 100
     Write-Host "💾 Checking disk space (need at least ${minSpaceMB}MB)..." -ForegroundColor Cyan
-    $drive = Get-PSDrive -Name (Split-Path -Qualifier $Path)
-    if ($drive.Free -lt ($minSpaceMB * 1MB)) {
-        Write-Host "❌ Error: Insufficient disk space on drive $Path. At least ${minSpaceMB}MB required." -ForegroundColor Red
-        exit 1
+    
+    # Correction: Extraire correctement la lettre de lecteur
+    $driveLetter = if ($Path -match '^([A-Za-z]):') { $matches[1] } else { "C" }
+    
+    try {
+        $drive = Get-PSDrive -Name $driveLetter -ErrorAction Stop
+        $freeSpaceMB = [math]::Round($drive.Free / 1MB, 0)
+        
+        if ($drive.Free -lt ($minSpaceMB * 1MB)) {
+            Write-Host "❌ Error: Insufficient disk space on drive $driveLetter:\. At least ${minSpaceMB}MB required." -ForegroundColor Red
+            Write-Host "   Available: $freeSpaceMB MB" -ForegroundColor Yellow
+            exit 1
+        }
+        Write-Host "✅ Disk space OK ($freeSpaceMB MB available)." -ForegroundColor Green
+    } catch {
+        Write-Host "⚠️  Warning: Could not check disk space for drive $driveLetter:\. Assuming sufficient space." -ForegroundColor Yellow
     }
-    Write-Host "✅ Disk space OK ($([math]::Round($drive.Free / 1MB, 0)) MB available)." -ForegroundColor Green
 }
 
 function Test-WindowsVersion {
