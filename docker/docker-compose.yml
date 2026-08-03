@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  headscale:
+    build: .
+    container_name: headscale
+    restart: unless-stopped
+    volumes:
+      - ./container-config:/etc/headscale
+      - ./container-data:/var/lib/headscale
+    environment:
+      - HS_SERVER_URL=${HS_SERVER_URL:-http://localhost:8080}
+      - HS_PORT=${HS_PORT:-8080}
+      - HS_USER=${HS_USER:-admin}
+      - HS_BASE_DOMAIN=${HS_BASE_DOMAIN:-headscale.internal}
+      - HS_DNS1=${HS_DNS1:-1.1.1.1}
+      - HS_DNS2=${HS_DNS2:-1.0.0.1}
+      - HS_LOG_LEVEL=${HS_LOG_LEVEL:-info}
+      - HS_METRICS_PORT=${HS_METRICS_PORT:-9090}
+    networks:
+      - headscale-net
+
+  headscale-ui:
+    image: ghcr.io/gurucomputing/headscale-ui:latest
+    container_name: headscale-ui
+    restart: unless-stopped
+    environment:
+      - HTTP_PORT=8080
+      - HTTPS_PORT=8443
+    networks:
+      - headscale-net
+
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - headscale-net
+
+networks:
+  headscale-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
