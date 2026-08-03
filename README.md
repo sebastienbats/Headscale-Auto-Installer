@@ -112,7 +112,7 @@ L’interface Web vous permet de gérer vos utilisateurs, nœuds et clés sans l
 Incluse dans le docker-compose.yml avec Caddy comme reverse proxy.
 **Installation autonome (sans Docker)**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/votre-utilisateur/votre-repo/main/scripts/install-headscale-ui.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/sebastienbats/Headscale-Auto-Installer/main/scripts/install-headscale-ui.sh | sudo bash
 ```
 ### Génération de l’API Key
 ```bash
