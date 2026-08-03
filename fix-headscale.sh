@@ -1,5 +1,5 @@
 #!/bin/bash
-# Headscale Config Fixer v1.0
+# Headscale Config Fixer v1.1
 # Corrige la configuration pour la compatibilité avec v0.29.2+
 # Licensed under MIT License
 
@@ -115,8 +115,15 @@ EOF
 }
 EOF
 
+    # APPLIQUER LES BONNES PERMISSIONS
+    echo "🔑 Setting correct permissions..."
     chown root:headscale "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
     chmod 640 "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
+    
+    # Vérifier que les permissions sont correctes
+    echo "📋 Permissions vérifiées:"
+    ls -la "$HS_CONF"
+    ls -la "${HS_CONF_DIR}/acl_policy.hujson"
     
     echo "✅ Configuration updated!"
 }
@@ -137,8 +144,14 @@ diagnose_headscale() {
     echo "Binary location:"
     ls -la "$HS_BIN" 2>/dev/null || echo "Binary not found"
     echo ""
-    echo "Configuration content:"
-    cat "$HS_CONF" 2>/dev/null || echo "Config not found"
+    echo "Configuration file permissions:"
+    ls -la "$HS_CONF" 2>/dev/null || echo "Config not found"
+    echo ""
+    echo "ACL policy permissions:"
+    ls -la "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || echo "ACL policy not found"
+    echo ""
+    echo "Configuration content (first 20 lines):"
+    head -20 "$HS_CONF" 2>/dev/null || echo "Config not found"
     echo ""
     echo "Configuration validation:"
     if [ -f "$HS_BIN" ]; then
@@ -148,6 +161,17 @@ diagnose_headscale() {
 
 restart_headscale() {
     echo "🔄 Restarting Headscale service..."
+    
+    # Vérifier les permissions avant de redémarrer
+    if [ -f "$HS_CONF" ]; then
+        echo "🔑 Checking permissions..."
+        chown root:headscale "$HS_CONF" 2>/dev/null || true
+        chmod 640 "$HS_CONF" 2>/dev/null || true
+        chown root:headscale "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || true
+        chmod 640 "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || true
+        ls -la "$HS_CONF"
+    fi
+    
     systemctl daemon-reload
     systemctl restart headscale
     sleep 3
@@ -160,15 +184,21 @@ restart_headscale() {
         echo ""
         echo "🔗 Socket:"
         ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found"
+        echo ""
+        echo "📋 Test command:"
+        headscale -c "$HS_CONF" users list 2>&1 | head -5
     else
         echo "⚠️  Headscale failed to start. Check logs:"
         journalctl -u headscale.service --no-pager -n 20
+        echo ""
+        echo "🔧 Manual test:"
+        sudo -u headscale /usr/local/bin/headscale serve -c "$HS_CONF" 2>&1 | head -10
     fi
 }
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.0"
+echo "🔧 Headscale Config Fixer v1.1"
 echo "============================================================"
 echo ""
 
