@@ -1,0 +1,15 @@
+{
+  "groups": { "group:admins": ["admin"] },
+  "hosts": {},
+  "acls": [
+    { "action": "accept", "src": ["*"], "dst": ["*:*"] }
+  ],
+  "tests": [],
+  "autoApprovers": {
+    "exitNode": ["tag:exit-node"],
+    "routes": {
+      "0.0.0.0/0": ["tag:gateway"],
+      "::/0": ["tag:gateway"]
+    }
+  }
+}
