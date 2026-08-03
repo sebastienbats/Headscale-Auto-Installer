@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.2 – Linux
-# Correction : syntaxe de configuration compatible Headscale v0.29.2
+# Headscale Auto-Installer v2.5.3 – Linux
+# Installation complète avec correction de configuration pour v0.29.2+
 # Licensed under MIT License
 
 set -e
@@ -280,16 +280,14 @@ create_directories() {
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
     
-    # Créer le répertoire pour les logs
     mkdir -p "$(dirname "$HS_LOG")"
     touch "$HS_LOG"
     chown headscale:headscale "$HS_LOG"
 }
 
 create_config() {
-    # Nouvelle syntaxe compatible Headscale v0.29.2
     cat > "$HS_CONF" <<EOF
-# Headscale configuration - Compatible v0.29.2
+# Headscale configuration - Compatible v0.29.2+
 server_url: ${computed_server_url}
 listen_addr: ${LISTEN_ADDR}:${PORT}
 metrics_listen_addr: ${LISTEN_ADDR}:${METRICS_PORT}
@@ -319,7 +317,7 @@ ${DNS2:+      - ${DNS2}}
 policy:
   path: ${HS_CONF_DIR}/acl_policy.hujson
 
-# Log level
+# Log level (new syntax for v0.29.2+)
 log:
   level: ${LOG_LEVEL}
   format: text
@@ -331,12 +329,8 @@ ip_prefixes:
 
 # Default preauth key expiry
 default_preauth_key_expiry: 24h
-
-# Randomize client port - moved to policy file
-# Set randomizeClientPort: true in acl_policy.hujson
 EOF
 
-    # Mettre à jour la politique ACL avec randomizeClientPort
     cat > "${HS_CONF_DIR}/acl_policy.hujson" <<EOF
 {
   "groups": {
@@ -441,7 +435,6 @@ wait_for_socket() {
         sleep 1
         i=$((i + 1))
         
-        # Vérifier si le service est en échec
         if systemctl is-failed headscale.service 2>/dev/null; then
             echo ""
             echo "⚠️  Headscale service failed to start. Checking logs..."
@@ -504,8 +497,6 @@ generate_api_key_for_ui() {
             echo "$api_key"
             echo "=================================================================="
             echo "ℹ️  Use this key to configure your Headscale-UI instance."
-            echo "   - If using Docker, set API_KEY environment variable."
-            echo "   - If using standalone UI, configure it in the UI settings."
             echo "=================================================================="
         else
             echo "⚠️  Failed to generate API key. Please generate it manually:"
@@ -590,7 +581,6 @@ install_headscale_ui() {
     UI_DIR="/var/www/headscale-ui"
     NGINX_CONF="/etc/nginx/sites-available/headscale-ui"
     
-    # Vérifier Nginx
     if ! command -v nginx >/dev/null 2>&1; then
         echo "📦 Installing Nginx..."
         case "$os" in
@@ -652,18 +642,14 @@ diagnose_headscale() {
     echo ""
     echo "Configuration:"
     headscale -c "$HS_CONF" version 2>/dev/null || echo "Cannot get version"
-    echo ""
-    echo "Validating configuration:"
-    headscale -c "$HS_CONF" validate 2>&1 || echo "Configuration validation failed"
 }
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.2"
+echo "🚀 Headscale Auto-Installer v2.5.3"
 echo "============================================================"
 echo ""
 
-# Vérifier si --diagnose a été passé
 if [ "$1" = "--diagnose" ]; then
     diagnose_headscale
     exit 0
@@ -675,7 +661,6 @@ check_os
 check_required_commands
 check_internet_connectivity
 
-# Parse arguments
 while [ $# -gt 0 ]; do
     case "$1" in
         --auto) AUTO=1 ;;
@@ -714,10 +699,6 @@ while [ $# -gt 0 ]; do
             echo "  --install-ui               Install Headscale-UI (standalone)"
             echo "  --diagnose                 Run diagnostics"
             echo "  --help                     Show this help"
-            echo ""
-            echo "Environment variables (in .env or .env.<profile>):"
-            echo "  HS_SERVER_URL, HS_PORT, HS_USER, HS_BASE_DOMAIN,"
-            echo "  HS_DNS1, HS_DNS2, HS_LOG_LEVEL, HS_METRICS_PORT"
             exit 0
             ;;
         *) exiterr "Unknown option: $1. Use --help for usage." ;;
@@ -725,14 +706,12 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-# Charger le fichier .env.<profil> s'il existe
 if [ -n "$ENV_PROFILE" ]; then
     load_env_file ".env.${ENV_PROFILE}"
     apply_profile_defaults "$ENV_PROFILE"
     echo "🌍 Environment profile: $ENV_PROFILE"
 fi
 
-# Gestion --upgrade
 if [ "$UPGRADE" = 1 ]; then
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale is not installed. Cannot upgrade."
@@ -741,7 +720,6 @@ if [ "$UPGRADE" = 1 ]; then
     exit 0
 fi
 
-# Gestion --install-ui (installation autonome)
 if [ "$INSTALL_UI" = 1 ]; then
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale must be installed before installing Headscale-UI."
@@ -751,7 +729,6 @@ if [ "$INSTALL_UI" = 1 ]; then
     exit 0
 fi
 
-# Vérification du port (sauf désinstallation)
 if [ "$REMOVE" = 0 ]; then
     check_port_availability "$PORT"
 fi
@@ -760,7 +737,6 @@ if [ "$REMOVE" = 0 ]; then
     check_disk_space
 fi
 
-# Désinstallation
 if [ "$REMOVE" = 1 ]; then
     echo "🗑️  Removing Headscale..."
     stop_headscale
@@ -773,7 +749,6 @@ if [ "$REMOVE" = 1 ]; then
     exit 0
 fi
 
-# Menu interactif si déjà installé et pas de réinstallation forcée
 if [ -f "$HS_BIN" ] && [ -f "$HS_CONF" ] && [ "$REINSTALL" = 0 ]; then
     echo "ℹ️  Headscale is already installed."
     echo "Select an option:"
@@ -817,17 +792,14 @@ if [ -f "$HS_BIN" ] && [ -f "$HS_CONF" ] && [ "$REINSTALL" = 0 ]; then
     fi
 fi
 
-# Si réinstallation, backup déjà fait
 if [ "$REINSTALL" = 1 ]; then
     stop_headscale
     backup_config
 fi
 
-# Nouvelle installation
 echo "📦 Installing required packages..."
 install_packages
 
-# Configuration interactive si non auto et pas de paramètres
 if [ "$AUTO" = 0 ] && [ -z "$SERVER_URL" ] && [ -z "$PORT" ] && [ -z "$USERNAME" ] && [ -z "$BASE_DOMAIN" ] && [ -z "$DNS1" ] && [ -z "$DNS2" ]; then
     echo ""
     echo "⚙️  Headscale server setup"
@@ -863,7 +835,6 @@ if [ "$AUTO" = 0 ] && [ -z "$SERVER_URL" ] && [ -z "$PORT" ] && [ -z "$USERNAME"
     fi
 fi
 
-# Calcul de l'URL du serveur
 if [ -n "$SERVER_URL" ]; then
     computed_server_url="${SERVER_URL%/}"
 else
@@ -874,7 +845,6 @@ else
     computed_server_url="http://${public_ip}:${PORT}"
 fi
 
-# Fonctions auxiliaires pour l'interactivité
 check_dns_name() {
     FQDN_REGEX='^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
     printf '%s' "$1" | tr -d '\n' | grep -Eq "$FQDN_REGEX"
