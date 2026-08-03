@@ -4,7 +4,7 @@
 [![Headscale Version](https://img.shields.io/badge/Headscale-0.29.2-blue)](https://github.com/juanfont/headscale/releases)
 [![UI Version](https://img.shields.io/badge/Headscale--UI-latest-green)](https://github.com/gurucomputing/headscale-ui)
 
-> Scripts d'installation automatisée pour **Headscale** (serveur de coordination auto‑hébergé compatible Tailscale) sur **Linux**, **Windows** et **Docker**, avec **interface Web** intégrée.
+> Scripts d'installation automatisée pour **Headscale** (serveur de coordination auto‑hébergé compatible Tailscale) sur **Linux**, **Windows (WSL)** et **Docker**, avec **interface Web** intégrée.
 
 Ces scripts permettent de déployer un serveur Headscale en quelques secondes, avec une configuration prête à l'emploi incluant **l'approbation automatique des routes LAN**, **une interface Web** et **un reverse proxy** sécurisé.
 
@@ -12,7 +12,7 @@ Ces scripts permettent de déployer un serveur Headscale en quelques secondes, a
 
 ## ✨ Fonctionnalités
 
-- **Multi‑OS** : Linux (systemd), Windows (Service Windows), **Docker**.
+- **Multi‑OS** : Linux (systemd), Windows (WSL), **Docker**.
 - **Interface Web** : **Headscale-UI** intégrée via Docker ou installation autonome.
 - **Reverse proxy** : Caddy pré‑configuré pour exposer Headscale et l’UI sur le même domaine.
 - **Installation propre** : Téléchargement du binaire officiel depuis GitHub avec **vérification des sommes de contrôle**.
@@ -31,7 +31,6 @@ Ces scripts permettent de déployer un serveur Headscale en quelques secondes, a
 ```text
 Headscale-Auto-Installer
 ├── install-headscale.sh          # Script Linux (Bash) v2.4
-├── install-headscale.ps1         # Script Windows (PowerShell) v2.4
 ├── .env.example                  # Exemple de configuration
 ├── .env.dev                      # Exemple pour développement
 ├── .env.prod                     # Exemple pour production
@@ -59,10 +58,8 @@ Headscale-Auto-Installer
 - Accès `root` ou `sudo`.
 - Connexion Internet sortante.
 
-### Windows
+### Windows (WSL)
 - Windows 10/11, Windows Server 2016+.
-- PowerShell 5.1+.
-- Exécution en tant qu'**Administrateur**.
 
 ### Docker
 - Docker et Docker Compose installés.
@@ -96,24 +93,10 @@ sudo bash install-headscale.sh --env prod
 ```bash
 sudo bash install-headscale.sh --upgrade
 ```
-### Windows
-**Téléchargement et exécution (PowerShell en Admin) :**
-```pwsh
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sebastienbats/Headscale-Auto-Installer/main/install-headscale.ps1" -OutFile install-headscale.ps1
-.\install-headscale.ps1
-```
-**Avec paramètres personnalisés :**
-```pwsh
-.\install-headscale.ps1 -ServerUrl "https://hs.mondomaine.com" -InitialUser "admin" -Port 8443 -BaseDomain "vpn.local" -Environment prod
-```
-**Mise à jour :**
-```powershell
-.\install-headscale.ps1 -Upgrade
-```
 ### Docker (recommandé pour l'UI)
 ```bash
-git clone https://github.com/votre-utilisateur/votre-repo.git
-cd votre-repo/docker
+git clone https://github.com/sebastienbats/Headscale-Auto-Installer.git
+cd Headscale-Auto-Installer/docker
 cp .env.example .env
 # Modifiez .env avec vos paramètres
 docker-compose up -d
@@ -193,10 +176,6 @@ Les scripts activent les autoApprovers pour :
   ```bash
   headscale -c /etc/headscale/config.yaml <commande>
   ```
-  **Windows :**
-  ```powershell
-  & "C:\Program Files\Headscale\headscale.exe" -c "C:\ProgramData\Headscale\config.yaml" <commande>
-  ```
   **Exemples :**
   ```bash
   headscale users list
@@ -205,7 +184,7 @@ Les scripts activent les autoApprovers pour :
   headscale nodes list
   ```
 ## 🔄 Mise à jour automatique
-  --upgrade (Linux) / -Upgrade (Windows) :
+  --upgrade (Linux) :
   - Sauvegarde la configuration
   - Arrête le service
   - Télécharge la dernière version depuis GitHub
@@ -217,7 +196,6 @@ Les scripts activent les autoApprovers pour :
 ```bash
 sudo bash install-headscale.sh --remove
 ```
-**Windows : menu interactif ou manuellement.**
 **Docker :**
 ```bash
 docker-compose down -v
