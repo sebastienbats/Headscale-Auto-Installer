@@ -1,0 +1,21 @@
+# Domaine principal pour Headscale + UI
+hs.votredomaine.com {
+    # Interface Web servie sur /web
+    handle /web/* {
+        reverse_proxy headscale-ui:8080
+    }
+
+    # API Headscale
+    handle {
+        reverse_proxy headscale:8080 {
+            header_down Access-Control-Allow-Origin https://hs-ui.votredomaine.com
+            header_down Access-Control-Allow-Methods "POST, GET, OPTIONS, DELETE"
+            header_down Access-Control-Allow-Headers *
+        }
+    }
+}
+
+# Si vous voulez servir l'UI sur un sous-domaine séparé
+# hs-ui.votredomaine.com {
+#     reverse_proxy headscale-ui:8080
+# }
