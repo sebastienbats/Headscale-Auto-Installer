@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.1 – Linux
-# Correction : meilleure gestion du démarrage du service et diagnostics
+# Headscale Auto-Installer v2.5.2 – Linux
+# Correction : syntaxe de configuration compatible Headscale v0.29.2
 # Licensed under MIT License
 
 set -e
@@ -287,8 +287,9 @@ create_directories() {
 }
 
 create_config() {
+    # Nouvelle syntaxe compatible Headscale v0.29.2
     cat > "$HS_CONF" <<EOF
-# Headscale configuration
+# Headscale configuration - Compatible v0.29.2
 server_url: ${computed_server_url}
 listen_addr: ${LISTEN_ADDR}:${PORT}
 metrics_listen_addr: ${LISTEN_ADDR}:${METRICS_PORT}
@@ -305,18 +306,23 @@ db_path: ${HS_DATA_DIR}/db.sqlite
 # Magic DNS base domain
 base_domain: ${BASE_DOMAIN}
 
-# DNS configuration
-dns_config:
+# DNS configuration (new syntax for v0.29.2+)
+dns:
   nameservers:
-    - ${DNS1}
-${DNS2:+    - ${DNS2}}
+    global:
+      - ${DNS1}
+${DNS2:+      - ${DNS2}}
+  domains: []
+  split_dns: {}
 
-# ACL policy path
-acl_policy_path: ${HS_CONF_DIR}/acl_policy.hujson
+# Policy configuration (new syntax for v0.29.2+)
+policy:
+  path: ${HS_CONF_DIR}/acl_policy.hujson
 
 # Log level
-log_level: ${LOG_LEVEL}
-log_format: text
+log:
+  level: ${LOG_LEVEL}
+  format: text
 
 # IP prefixes for nodes
 ip_prefixes:
@@ -326,10 +332,11 @@ ip_prefixes:
 # Default preauth key expiry
 default_preauth_key_expiry: 24h
 
-# Randomize client port
-randomize_client_port: false
+# Randomize client port - moved to policy file
+# Set randomizeClientPort: true in acl_policy.hujson
 EOF
 
+    # Mettre à jour la politique ACL avec randomizeClientPort
     cat > "${HS_CONF_DIR}/acl_policy.hujson" <<EOF
 {
   "groups": {
@@ -350,7 +357,8 @@ EOF
       "0.0.0.0/0": ["tag:gateway"],
       "::/0": ["tag:gateway"]
     }
-  }
+  },
+  "randomizeClientPort": false
 }
 EOF
     chown root:headscale "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
@@ -644,11 +652,14 @@ diagnose_headscale() {
     echo ""
     echo "Configuration:"
     headscale -c "$HS_CONF" version 2>/dev/null || echo "Cannot get version"
+    echo ""
+    echo "Validating configuration:"
+    headscale -c "$HS_CONF" validate 2>&1 || echo "Configuration validation failed"
 }
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.1"
+echo "🚀 Headscale Auto-Installer v2.5.2"
 echo "============================================================"
 echo ""
 
