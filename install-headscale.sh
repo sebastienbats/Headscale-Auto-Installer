@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.4 – Linux
-# Intégration complète : .env, backup, pré-vérifications, upgrade, multi-env, UI
+# Headscale Auto-Installer v2.5.1 – Linux
+# Correction : meilleure gestion du démarrage du service et diagnostics
 # Licensed under MIT License
 
 set -e
@@ -20,6 +20,7 @@ HS_SOCK="/var/run/headscale/headscale.sock"
 HS_BIN="/usr/local/bin/headscale"
 HS_SVC="/etc/systemd/system/headscale.service"
 HS_IPT_SVC="/etc/systemd/system/headscale-iptables.service"
+HS_LOG="/var/log/headscale.log"
 
 # ========== VARIABLES PAR DÉFAUT ==========
 SERVER_URL=""
@@ -278,6 +279,11 @@ create_directories() {
     chmod 750 "$HS_CONF_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
+    
+    # Créer le répertoire pour les logs
+    mkdir -p "$(dirname "$HS_LOG")"
+    touch "$HS_LOG"
+    chown headscale:headscale "$HS_LOG"
 }
 
 create_config() {
@@ -373,6 +379,8 @@ ProtectSystem=full
 ProtectHome=true
 NoNewPrivileges=true
 PrivateTmp=true
+StandardOutput=append:${HS_LOG}
+StandardError=append:${HS_LOG}
 
 [Install]
 WantedBy=multi-user.target
@@ -414,19 +422,45 @@ start_hs_service() {
 
 wait_for_socket() {
     local i=0
+    local max_attempts=60
     echo -n '⏳ Waiting for Headscale to start'
-    while [ "$i" -lt 30 ]; do
-        [ -S "$HS_SOCK" ] && echo "" && return 0
+    while [ "$i" -lt "$max_attempts" ]; do
+        if [ -S "$HS_SOCK" ]; then
+            echo ""
+            return 0
+        fi
         echo -n '.'
         sleep 1
         i=$((i + 1))
+        
+        # Vérifier si le service est en échec
+        if systemctl is-failed headscale.service 2>/dev/null; then
+            echo ""
+            echo "⚠️  Headscale service failed to start. Checking logs..."
+            journalctl -u headscale.service --no-pager -n 20
+            return 1
+        fi
     done
     echo ""
+    echo "⚠️  Timeout waiting for Headscale to start (${max_attempts}s)."
+    echo "📋 Check service status: systemctl status headscale"
+    echo "📋 Check logs: journalctl -u headscale.service -n 50"
     return 1
 }
 
 hs_cmd() {
-    "$HS_BIN" -c "$HS_CONF" "$@"
+    local retry=0
+    local max_retries=5
+    while [ "$retry" -lt "$max_retries" ]; do
+        if [ -S "$HS_SOCK" ]; then
+            "$HS_BIN" -c "$HS_CONF" "$@"
+            return $?
+        fi
+        sleep 2
+        retry=$((retry + 1))
+    done
+    echo "❌ Error: Headscale socket not available. Service may not be running." >&2
+    return 1
 }
 
 create_initial_user() {
@@ -445,7 +479,7 @@ create_initial_key() {
         hs_cmd preauthkeys create --user "$user_id" --reusable --expiration 90d 2>&1 || true
     else
         echo "⚠️  Warning: Could not find user '$USERNAME'. Skipping pre-auth key creation." >&2
-        echo "Create a key manually: bash $0 --createkey --user $USERNAME" >&2
+        echo "Create a key manually: headscale -c $HS_CONF preauthkeys create --user $USERNAME --reusable --expiration 90d" >&2
     fi
     echo "=================================================================="
 }
@@ -467,7 +501,7 @@ generate_api_key_for_ui() {
             echo "=================================================================="
         else
             echo "⚠️  Failed to generate API key. Please generate it manually:"
-            echo "   headscale apikeys create -e 9999d"
+            echo "   headscale -c $HS_CONF apikeys create -e 9999d"
         fi
     fi
 }
@@ -475,7 +509,17 @@ generate_api_key_for_ui() {
 finish_setup() {
     echo ""
     echo "============================================================"
-    echo "✅ Installation completed successfully!"
+    if systemctl is-active --quiet headscale.service; then
+        echo "✅ Installation completed successfully!"
+    else
+        echo "⚠️  Installation completed with warnings."
+        echo "   Headscale service is not running. Check:"
+        echo "   - systemctl status headscale"
+        echo "   - journalctl -u headscale.service -n 50"
+        echo ""
+        echo "   Try starting it manually:"
+        echo "   sudo systemctl start headscale"
+    fi
     echo "============================================================"
     echo ""
     echo "🌐 Headscale server URL: $computed_server_url"
@@ -490,7 +534,7 @@ finish_setup() {
         echo ""
         echo "🌐 Headscale-UI available at:"
         echo "   https://hs.votredomaine.com/web (if using Docker with Caddy)"
-        echo "   or http://hs-ui.votredomaine.com/web (standalone)"
+        echo "   or http://$(hostname -I | awk '{print $1}')/web (standalone)"
         echo ""
         echo "🔑 Configure the UI with the API key generated above."
     fi
@@ -564,7 +608,7 @@ install_headscale_ui() {
     cat > "$NGINX_CONF" <<EOF
 server {
     listen 80;
-    server_name hs-ui.votredomaine.com;
+    server_name _;
 
     location /web/ {
         alias $UI_DIR/;
@@ -577,15 +621,42 @@ EOF
     systemctl reload nginx 2>/dev/null || systemctl restart nginx
     
     echo "✅ Headscale-UI installed successfully!"
-    echo "🌐 Access UI at: http://hs-ui.votredomaine.com/web"
-    echo "ℹ️  Don't forget to generate an API key: headscale apikeys create -e 9999d"
+    echo "🌐 Access UI at: http://$(hostname -I | awk '{print $1}')/web"
+    echo "ℹ️  Don't forget to generate an API key: headscale -c $HS_CONF apikeys create -e 9999d"
+}
+
+# ========== DIAGNOSTIC ==========
+diagnose_headscale() {
+    echo ""
+    echo "📋 Headscale Diagnostics:"
+    echo "========================"
+    echo "Service status:"
+    systemctl status headscale.service --no-pager -l 2>/dev/null || echo "Service not found"
+    echo ""
+    echo "Last 20 log lines:"
+    journalctl -u headscale.service --no-pager -n 20 2>/dev/null || echo "No logs found"
+    echo ""
+    echo "Socket existence:"
+    ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found"
+    echo ""
+    echo "Binary location:"
+    ls -la "$HS_BIN" 2>/dev/null || echo "Binary not found"
+    echo ""
+    echo "Configuration:"
+    headscale -c "$HS_CONF" version 2>/dev/null || echo "Cannot get version"
 }
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.4"
+echo "🚀 Headscale Auto-Installer v2.5.1"
 echo "============================================================"
 echo ""
+
+# Vérifier si --diagnose a été passé
+if [ "$1" = "--diagnose" ]; then
+    diagnose_headscale
+    exit 0
+fi
 
 check_shell
 check_root
@@ -593,7 +664,7 @@ check_os
 check_required_commands
 check_internet_connectivity
 
-# Parse arguments (doit se faire avant le chargement du fichier de profil)
+# Parse arguments
 while [ $# -gt 0 ]; do
     case "$1" in
         --auto) AUTO=1 ;;
@@ -611,6 +682,7 @@ while [ $# -gt 0 ]; do
         --reinstall) REINSTALL=1 ;;
         --upgrade) UPGRADE=1 ;;
         --install-ui) INSTALL_UI=1 ;;
+        --diagnose) diagnose_headscale; exit 0 ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -629,6 +701,7 @@ while [ $# -gt 0 ]; do
             echo "  --reinstall                Reinstall with backup"
             echo "  --upgrade                  Upgrade to latest version"
             echo "  --install-ui               Install Headscale-UI (standalone)"
+            echo "  --diagnose                 Run diagnostics"
             echo "  --help                     Show this help"
             echo ""
             echo "Environment variables (in .env or .env.<profile>):"
@@ -684,7 +757,7 @@ if [ "$REMOVE" = 1 ]; then
     rm -f "$HS_SVC" "$HS_IPT_SVC"
     systemctl daemon-reload
     rm -rf "$HS_CONF_DIR" "$HS_DATA_DIR" "$HS_RUN_DIR"
-    rm -f "$HS_BIN"
+    rm -f "$HS_BIN" "$HS_LOG"
     echo "✅ Headscale removed."
     exit 0
 fi
@@ -707,7 +780,8 @@ if [ -f "$HS_BIN" ] && [ -f "$HS_CONF" ] && [ "$REINSTALL" = 0 ]; then
     echo " 12) Upgrade Headscale to latest version"
     echo " 13) Install Headscale-UI (standalone)"
     echo " 14) Generate API key for UI"
-    echo " 15) Exit"
+    echo " 15) Run diagnostics"
+    echo " 16) Exit"
     read -rp "Option: " option
     case $option in
         1) read -rp "Username: " u; hs_cmd users create "$u" 2>&1 ;;
@@ -718,13 +792,14 @@ if [ -f "$HS_BIN" ] && [ -f "$HS_CONF" ] && [ "$REINSTALL" = 0 ]; then
         6) read -rp "Node ID: " id; hs_cmd nodes delete --identifier "$id" 2>&1 ;;
         7) read -rp "User: " u; hs_cmd preauthkeys create --user "$u" --reusable --expiration 90d 2>&1 ;;
         8) read -rp "User: " u; hs_cmd preauthkeys list --user "$u" 2>&1 ;;
-        9) stop_headscale; systemctl disable headscale.service 2>/dev/null; rm -f "$HS_SVC" "$HS_IPT_SVC"; systemctl daemon-reload; rm -rf "$HS_CONF_DIR" "$HS_DATA_DIR" "$HS_RUN_DIR"; rm -f "$HS_BIN"; echo "✅ Headscale removed." ;;
+        9) stop_headscale; systemctl disable headscale.service 2>/dev/null; rm -f "$HS_SVC" "$HS_IPT_SVC"; systemctl daemon-reload; rm -rf "$HS_CONF_DIR" "$HS_DATA_DIR" "$HS_RUN_DIR"; rm -f "$HS_BIN" "$HS_LOG"; echo "✅ Headscale removed." ;;
         10) backup_config; exit 0 ;;
         11) stop_headscale; backup_config; echo "🔄 Proceeding with reinstallation..."; REINSTALL=1 ;;
         12) upgrade_headscale; exit 0 ;;
         13) install_headscale_ui; generate_api_key_for_ui; exit 0 ;;
         14) generate_api_key_for_ui; exit 0 ;;
-        15) exit 0 ;;
+        15) diagnose_headscale; exit 0 ;;
+        16) exit 0 ;;
     esac
     if [ "$option" != "11" ]; then
         exit 0
@@ -833,7 +908,21 @@ if wait_for_socket; then
         generate_api_key_for_ui
     fi
 else
+    echo ""
     echo "⚠️  Warning: Headscale service did not start properly."
+    echo ""
+    echo "📋 Diagnostics information:"
+    echo "=========================="
+    systemctl status headscale.service --no-pager 2>/dev/null
+    echo ""
+    echo "📋 Last 10 log lines:"
+    journalctl -u headscale.service --no-pager -n 10 2>/dev/null
+    echo ""
+    echo "🔧 Try manually starting the service:"
+    echo "   sudo systemctl start headscale"
+    echo ""
+    echo "🔧 For more details, run:"
+    echo "   sudo bash $0 --diagnose"
 fi
 
 finish_setup
