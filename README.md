@@ -75,7 +75,7 @@ Headscale-Auto-Installer
 
 **Installation interactive :**
 ```bash
-wget -O install-headscale.sh https://raw.githubusercontent.com/votre-utilisateur/votre-repo/main/install-headscale.sh
+wget -O install-headscale.sh https://raw.githubusercontent.com/sebastienbats/Headscale-Auto-Installer/main/install-headscale.sh
 sudo bash install-headscale.sh
 ```
 **Installation automatique (non interactive) :**
@@ -99,7 +99,7 @@ sudo bash install-headscale.sh --upgrade
 ### Windows
 **Téléchargement et exécution (PowerShell en Admin) :**
 ```pwsh
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/votre-utilisateur/votre-repo/main/install-headscale.ps1" -OutFile install-headscale.ps1
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/sebastienbats/Headscale-Auto-Installer/main/install-headscale.ps1" -OutFile install-headscale.ps1
 .\install-headscale.ps1
 ```
 **Avec paramètres personnalisés :**
