@@ -201,7 +201,9 @@ Les scripts activent les autoApprovers pour :
   headscale nodes list
   ```
 ## 🔄 Mise à jour automatique
-  --upgrade (Linux) :
+  ```bash
+  sudo bash install-headscale.sh --upgrade
+  ```
   - Sauvegarde la configuration
   - Arrête le service
   - Télécharge la dernière version depuis GitHub
@@ -210,13 +212,13 @@ Les scripts activent les autoApprovers pour :
 
 ## 🧹 Désinstallation
 **Linux :**
-```bash
-sudo bash install-headscale.sh --remove
-```
+  ```bash
+  sudo bash install-headscale.sh --remove
+  ```
 **Docker :**
-```bash
-docker-compose down -v
-```
+  ```bash
+  docker-compose down -v
+  ```
 
 ## 🔒 Sécurité et recommandations
 - HTTPS : Utilisez un reverse proxy (Caddy, Nginx) pour terminer le TLS.
