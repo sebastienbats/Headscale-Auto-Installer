@@ -1,5 +1,5 @@
 #!/bin/bash
-# Headscale Config Fixer v1.1
+# Headscale Config Fixer v1.2
 # Corrige la configuration pour la compatibilité avec v0.29.2+
 # Licensed under MIT License
 
@@ -19,29 +19,24 @@ HS_BIN="/usr/local/bin/headscale"
 fix_config() {
     echo "🔧 Fixing Headscale configuration for v0.29.2+..."
     
-    # Vérifier que Headscale est installé
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale is not installed. Please run install-headscale.sh first."
     fi
     
-    # Arrêter le service
     echo "🛑 Stopping Headscale service..."
     systemctl stop headscale 2>/dev/null || true
     
-    # Sauvegarder l'ancienne config
     if [ -f "$HS_CONF" ]; then
         local backup="${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
         cp "$HS_CONF" "$backup"
         echo "💾 Configuration backed up to $backup"
     fi
     
-    # Extraire l'URL du serveur depuis l'ancienne config si possible
     local server_url="http://$(hostname -I | awk '{print $1}'):8080"
     if [ -f "${HS_CONF}.old" ]; then
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
     
-    # Créer la nouvelle configuration
     echo "📝 Creating new configuration file..."
     cat > "$HS_CONF" <<EOF
 # Headscale configuration - Compatible v0.29.2+
@@ -51,8 +46,12 @@ metrics_listen_addr: 0.0.0.0:9090
 grpc_listen_addr: 0.0.0.0:50443
 grpc_allow_insecure: false
 
-# Private key path
+# Private key path (legacy)
 private_key_path: ${HS_DATA_DIR}/private.key
+
+# Noise private key path (NEW for v0.29.2+)
+noise:
+  private_key_path: ${HS_DATA_DIR}/noise_private.key
 
 # Database
 db_type: sqlite3
@@ -61,7 +60,7 @@ db_path: ${HS_DATA_DIR}/db.sqlite
 # Magic DNS base domain
 base_domain: headscale.internal
 
-# DNS configuration (new syntax for v0.29.2+)
+# DNS configuration
 dns:
   nameservers:
     global:
@@ -70,11 +69,11 @@ dns:
   domains: []
   split_dns: {}
 
-# Policy configuration (new syntax for v0.29.2+)
+# Policy configuration
 policy:
   path: ${HS_CONF_DIR}/acl_policy.hujson
 
-# Log level (new syntax for v0.29.2+)
+# Log level
 log:
   level: info
   format: text
@@ -88,7 +87,6 @@ ip_prefixes:
 default_preauth_key_expiry: 24h
 EOF
 
-    # Mettre à jour la politique ACL
     echo "📝 Updating ACL policy..."
     cat > "${HS_CONF_DIR}/acl_policy.hujson" <<'EOF'
 {
@@ -115,12 +113,10 @@ EOF
 }
 EOF
 
-    # APPLIQUER LES BONNES PERMISSIONS
     echo "🔑 Setting correct permissions..."
     chown root:headscale "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
     chmod 640 "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
     
-    # Vérifier que les permissions sont correctes
     echo "📋 Permissions vérifiées:"
     ls -la "$HS_CONF"
     ls -la "${HS_CONF_DIR}/acl_policy.hujson"
@@ -150,9 +146,6 @@ diagnose_headscale() {
     echo "ACL policy permissions:"
     ls -la "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || echo "ACL policy not found"
     echo ""
-    echo "Configuration content (first 20 lines):"
-    head -20 "$HS_CONF" 2>/dev/null || echo "Config not found"
-    echo ""
     echo "Configuration validation:"
     if [ -f "$HS_BIN" ]; then
         "$HS_BIN" -c "$HS_CONF" version 2>/dev/null || echo "❌ Configuration invalid"
@@ -162,7 +155,6 @@ diagnose_headscale() {
 restart_headscale() {
     echo "🔄 Restarting Headscale service..."
     
-    # Vérifier les permissions avant de redémarrer
     if [ -f "$HS_CONF" ]; then
         echo "🔑 Checking permissions..."
         chown root:headscale "$HS_CONF" 2>/dev/null || true
@@ -198,7 +190,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.1"
+echo "🔧 Headscale Config Fixer v1.2"
 echo "============================================================"
 echo ""
 
