@@ -72,6 +72,7 @@ Headscale-Auto-Installer/
 **Installation interactive :**
 ```bash
 git clone https://github.com/sebastienbats/Headscale-Auto-Installer.git
+cd Headscale-Auto-Installer
 sudo bash install-headscale.sh
 ```
 **Installation automatique (non interactive) :**
