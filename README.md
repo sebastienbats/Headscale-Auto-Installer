@@ -29,23 +29,23 @@ Ces scripts permettent de déployer un serveur Headscale en quelques secondes, a
 
 ## 📁 Structure du projet
 ```text
-Headscale-Auto-Installer
-├── install-headscale.sh          # Script d’installation Linux (v2.5.3)
-├── fix-headscale.sh              # Script de correction de configuration (v1.5)
-├── .env.example                  # Exemple de configuration
-├── .env.dev                      # Exemple pour développement
-├── .env.prod                     # Exemple pour production
-├── docker/
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── config/
-│   │   ├── config.yaml
-│   │   └── acl_policy.hujson
-│   ├── caddy/
-│   │   └── Caddyfile
-│   └── scripts/
-│       └── init.sh
-└── README.md                     # Documentation complète
+Headscale-Auto-Installer/
+├── .env.example                  # Exemple de configuration (variables d’environnement)
+├── .env.dev                      # Profil pour l’environnement de développement
+├── .env.prod                     # Profil pour l’environnement de production
+├── install-headscale.sh          # Script d’installation principal (Linux)
+├── fix-headscale.sh              # Script de correction de configuration
+├── README.md                     # Documentation complète du projet
+└── docker/                       # Déploiement avec Docker
+    ├── Dockerfile                # Construction de l’image Headscale
+    ├── docker-compose.yml        # Orchestration Headscale + UI + Caddy
+    ├── config/                   # Fichiers de configuration pour le conteneur
+    │   ├── config.yaml           # Configuration Headscale (compatible v0.29.2+)
+    │   └── acl_policy.hujson     # Politique ACL avec autoApprovers et randomizeClientPort
+    ├── caddy/                    # Reverse proxy Caddy
+    │   └── Caddyfile             # Routage vers Headscale et l’UI
+    └── scripts/                  # Scripts d’initialisation du conteneur
+        └── init.sh               # Création de l’utilisateur et de la clé pré‑authentifiée
 ```
 
 ---
