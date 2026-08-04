@@ -1,5 +1,5 @@
 #!/bin/bash
-# Headscale Config Fixer v1.3
+# Headscale Config Fixer v1.5 – Version finale
 # Corrige la configuration pour la compatibilité avec v0.29.2+
 # Licensed under MIT License
 
@@ -26,6 +26,12 @@ fix_config() {
     echo "🛑 Stopping Headscale service..."
     systemctl stop headscale 2>/dev/null || true
     
+    # Créer les répertoires nécessaires
+    echo "📁 Creating necessary directories..."
+    mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR" "$HS_CONF_DIR"
+    chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
+    chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
+    
     if [ -f "$HS_CONF" ]; then
         local backup="${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
         cp "$HS_CONF" "$backup"
@@ -46,21 +52,16 @@ metrics_listen_addr: 0.0.0.0:9090
 grpc_listen_addr: 0.0.0.0:50443
 grpc_allow_insecure: false
 
-# Private key path (legacy)
 private_key_path: ${HS_DATA_DIR}/private.key
 
-# Noise private key path (NEW for v0.29.2+)
 noise:
   private_key_path: ${HS_DATA_DIR}/noise_private.key
 
-# Database
 db_type: sqlite3
 db_path: ${HS_DATA_DIR}/db.sqlite
 
-# Magic DNS base domain
 base_domain: headscale.internal
 
-# DNS configuration
 dns:
   nameservers:
     global:
@@ -69,21 +70,17 @@ dns:
   domains: []
   split_dns: {}
 
-# Policy configuration
 policy:
   path: ${HS_CONF_DIR}/acl_policy.hujson
 
-# Log level
 log:
   level: info
   format: text
 
-# IP prefixes for nodes (MUST be defined for v0.29.2+)
 ip_prefixes:
   - fd7a:115c:a1e0::/48
   - 100.64.0.0/10
 
-# Default preauth key expiry
 default_preauth_key_expiry: 24h
 EOF
 
@@ -124,7 +121,7 @@ EOF
     # Vérifier la configuration
     echo "🔍 Validating configuration..."
     if sudo -u headscale "$HS_BIN" -c "$HS_CONF" version 2>/dev/null; then
-        echo "✅ Configuration is valid!"
+        echo "✅ Configuration version OK!"
     else
         echo "⚠️  Configuration validation failed. Please check the config file."
     fi
@@ -151,20 +148,23 @@ diagnose_headscale() {
     echo "Configuration file permissions:"
     ls -la "$HS_CONF" 2>/dev/null || echo "Config not found"
     echo ""
-    echo "ACL policy permissions:"
-    ls -la "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || echo "ACL policy not found"
+    echo "ip_prefixes in config:"
+    grep -A 2 "^ip_prefixes:" "$HS_CONF" 2>/dev/null || echo "ip_prefixes not found!"
     echo ""
-    echo "Configuration validation:"
-    if [ -f "$HS_BIN" ]; then
-        "$HS_BIN" -c "$HS_CONF" version 2>/dev/null || echo "❌ Configuration invalid"
-    fi
+    echo "Data directory permissions:"
+    ls -la "$HS_DATA_DIR" 2>/dev/null || echo "Data directory not found"
     echo ""
-    echo "Configuration content (ip_prefixes section):"
-    grep -A 5 "^ip_prefixes:" "$HS_CONF" 2>/dev/null || echo "ip_prefixes not found!"
+    echo "Run directory permissions:"
+    ls -la "$HS_RUN_DIR" 2>/dev/null || echo "Run directory not found"
 }
 
 restart_headscale() {
     echo "🔄 Restarting Headscale service..."
+    
+    # S'assurer que les répertoires existent
+    mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR"
+    chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
+    chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
     
     if [ -f "$HS_CONF" ]; then
         echo "🔑 Checking permissions..."
@@ -172,12 +172,13 @@ restart_headscale() {
         chmod 640 "$HS_CONF" 2>/dev/null || true
         chown root:headscale "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || true
         chmod 640 "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || true
+        echo "📋 Configuration permissions:"
         ls -la "$HS_CONF"
     fi
     
     systemctl daemon-reload
     systemctl restart headscale
-    sleep 3
+    sleep 5
     
     if systemctl is-active --quiet headscale.service; then
         echo "✅ Headscale is now running!"
@@ -186,25 +187,23 @@ restart_headscale() {
         systemctl status headscale.service --no-pager
         echo ""
         echo "🔗 Socket:"
-        ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found"
+        ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found (waiting for service to fully start)"
         echo ""
         echo "📋 Test command:"
-        headscale -c "$HS_CONF" users list 2>&1 | head -5
+        sudo headscale -c "$HS_CONF" users list 2>&1 | head -5
     else
-        echo "⚠️  Headscale failed to start. Check logs:"
-        journalctl -u headscale.service --no-pager -n 20
-        echo ""
-        echo "🔧 Manual test (look for errors):"
+        echo "⚠️  Headscale failed to start. Manual test:"
+        echo "🔧 Running manual test..."
         sudo -u headscale /usr/local/bin/headscale serve -c "$HS_CONF" 2>&1 | head -15
         echo ""
-        echo "🔧 Checking configuration for ip_prefixes:"
-        grep -A 5 "^ip_prefixes:" "$HS_CONF" 2>/dev/null || echo "ip_prefixes not found!"
+        echo "📋 Check logs:"
+        journalctl -u headscale.service --no-pager -n 20
     fi
 }
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.3"
+echo "🔧 Headscale Config Fixer v1.5"
 echo "============================================================"
 echo ""
 
