@@ -12,18 +12,18 @@ Ces scripts permettent de déployer un serveur Headscale en quelques secondes, a
 
 ## ✨ Fonctionnalités
 
-- **Multi‑OS** : Linux (systemd), Windows (WSL), **Docker**.
-- **Interface Web** : **Headscale-UI** intégrée via Docker ou installation autonome.
-- **Reverse proxy** : Caddy pré‑configuré pour exposer Headscale et l’UI sur le même domaine.
-- **Installation propre** : Téléchargement du binaire officiel depuis GitHub avec **vérification des sommes de contrôle**.
-- **Variables d’environnement et fichier `.env`** : Toutes les options peuvent être définies via des variables `HS_*` ou un fichier `.env`.
-- **Backup automatique** : Sauvegarde de la configuration (`config.yaml`, `private.key`, `db.sqlite`, `acl_policy.hujson`) avant toute réinstallation ou mise à jour.
-- **Vérifications pré‑installation** : Port disponible, espace disque (>100 Mo), connectivité Internet, OS compatible.
-- **Mise à jour automatique** : Commande `--upgrade` (Linux) ou `-Upgrade` (Windows) pour passer à la dernière version.
-- **Routage LAN automatique** : Politique ACL avec `autoApprovers` pour approuver automatiquement les routes.
-- **Environnements multiples** : Support des profils `dev`, `prod` via `.env.<profil>`.
-- **Interface de gestion intégrée** : Sous Linux, menu interactif pour gérer utilisateurs, nœuds et clés.
-- **Production‑ready** : Configuration recommandée pour SQLite, préfixes IP Tailscale, service robuste.
+- **Installation automatique** sur Linux avec systemd
+- **Support Docker** avec Docker Compose (Headscale + UI + Caddy)
+- **Interface Web** intégrée (Headscale-UI)
+- **Reverse proxy** Caddy pré‑configuré
+- **Variables d'environnement** et fichier `.env`
+- **Backup automatique** avant réinstallation/mise à jour
+- **Vérifications pré‑installation** (ports, disque, connectivité)
+- **Mise à jour automatique** (`--upgrade`)
+- **Routage LAN automatique** via `autoApprovers`
+- **Environnements multiples** (`dev`, `prod`)
+- **Diagnostics intégrés** (`--diagnose`)
+- **Correction de configuration** (`fix-headscale.sh`)
 
 ---
 
@@ -31,7 +31,7 @@ Ces scripts permettent de déployer un serveur Headscale en quelques secondes, a
 ```text
 Headscale-Auto-Installer
 ├── install-headscale.sh          # Script d’installation Linux (v2.5.3)
-├── fix-headscale.sh              # Script de correction de configuration (v1.1)
+├── fix-headscale.sh              # Script de correction de configuration (v1.5)
 ├── .env.example                  # Exemple de configuration
 ├── .env.dev                      # Exemple pour développement
 ├── .env.prod                     # Exemple pour production
