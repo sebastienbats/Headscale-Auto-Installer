@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.4 – Linux
-# Installation avec configuration définitive (prefixes v4/v6, db_type)
+# Headscale Auto-Installer v2.5.5 – Linux
+# Configuration définitive avec syntaxe YAML validée (db_type: sqlite3, prefixes)
 # Licensed under MIT License
 
 set -e
@@ -285,9 +285,9 @@ create_directories() {
     chown headscale:headscale "$HS_LOG"
 }
 
+# ========== CONFIGURATION DÉFINITIVE ==========
 create_config() {
     cat > "$HS_CONF" <<EOF
-# Headscale configuration - Compatible v0.29.2+
 server_url: ${computed_server_url}
 listen_addr: ${LISTEN_ADDR}:${PORT}
 metrics_listen_addr: ${LISTEN_ADDR}:${METRICS_PORT}
@@ -645,7 +645,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.4"
+echo "🚀 Headscale Auto-Installer v2.5.5"
 echo "============================================================"
 echo ""
 
