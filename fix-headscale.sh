@@ -1,5 +1,5 @@
 #!/bin/bash
-# Headscale Config Fixer v1.2
+# Headscale Config Fixer v1.3
 # Corrige la configuration pour la compatibilité avec v0.29.2+
 # Licensed under MIT License
 
@@ -78,7 +78,7 @@ log:
   level: info
   format: text
 
-# IP prefixes for nodes
+# IP prefixes for nodes (MUST be defined for v0.29.2+)
 ip_prefixes:
   - fd7a:115c:a1e0::/48
   - 100.64.0.0/10
@@ -121,6 +121,14 @@ EOF
     ls -la "$HS_CONF"
     ls -la "${HS_CONF_DIR}/acl_policy.hujson"
     
+    # Vérifier la configuration
+    echo "🔍 Validating configuration..."
+    if sudo -u headscale "$HS_BIN" -c "$HS_CONF" version 2>/dev/null; then
+        echo "✅ Configuration is valid!"
+    else
+        echo "⚠️  Configuration validation failed. Please check the config file."
+    fi
+    
     echo "✅ Configuration updated!"
 }
 
@@ -150,6 +158,9 @@ diagnose_headscale() {
     if [ -f "$HS_BIN" ]; then
         "$HS_BIN" -c "$HS_CONF" version 2>/dev/null || echo "❌ Configuration invalid"
     fi
+    echo ""
+    echo "Configuration content (ip_prefixes section):"
+    grep -A 5 "^ip_prefixes:" "$HS_CONF" 2>/dev/null || echo "ip_prefixes not found!"
 }
 
 restart_headscale() {
@@ -183,14 +194,17 @@ restart_headscale() {
         echo "⚠️  Headscale failed to start. Check logs:"
         journalctl -u headscale.service --no-pager -n 20
         echo ""
-        echo "🔧 Manual test:"
-        sudo -u headscale /usr/local/bin/headscale serve -c "$HS_CONF" 2>&1 | head -10
+        echo "🔧 Manual test (look for errors):"
+        sudo -u headscale /usr/local/bin/headscale serve -c "$HS_CONF" 2>&1 | head -15
+        echo ""
+        echo "🔧 Checking configuration for ip_prefixes:"
+        grep -A 5 "^ip_prefixes:" "$HS_CONF" 2>/dev/null || echo "ip_prefixes not found!"
     fi
 }
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.2"
+echo "🔧 Headscale Config Fixer v1.3"
 echo "============================================================"
 echo ""
 
