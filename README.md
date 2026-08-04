@@ -30,22 +30,21 @@ Ces scripts permettent de déployer un serveur Headscale en quelques secondes, a
 ## 📁 Structure du projet
 ```text
 Headscale-Auto-Installer
-├── install-headscale.sh          # Script Linux (Bash) v2.4
+├── install-headscale.sh          # Script d’installation Linux (v2.5.3)
+├── fix-headscale.sh              # Script de correction de configuration (v1.1)
 ├── .env.example                  # Exemple de configuration
 ├── .env.dev                      # Exemple pour développement
 ├── .env.prod                     # Exemple pour production
 ├── docker/
 │   ├── Dockerfile
-│   ├── docker-compose.yml        # Inclut Headscale + UI + Caddy
+│   ├── docker-compose.yml
 │   ├── config/
 │   │   ├── config.yaml
 │   │   └── acl_policy.hujson
 │   ├── caddy/
-│   │   └── Caddyfile             # Reverse proxy pour Headscale + UI
+│   │   └── Caddyfile
 │   └── scripts/
 │       └── init.sh
-├── scripts/
-│   └── install-headscale-ui.sh   # Installation autonome de l'UI
 └── README.md                     # Documentation complète
 ```
 
@@ -110,7 +109,7 @@ L’interface Web vous permet de gérer vos utilisateurs, nœuds et clés sans l
 
 ### Avec Docker
 Incluse dans le docker-compose.yml avec Caddy comme reverse proxy.
-**Installation autonome (sans Docker)**
+### Installation autonome (sans Docker)
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sebastienbats/Headscale-Auto-Installer/main/scripts/install-headscale-ui.sh | sudo bash
 ```
@@ -123,7 +122,8 @@ headscale apikeys create -e 9999d
 docker exec -it headscale headscale apikeys create -e 9999d
 ```
 ### Sécurisation
-Par défaut, l’UI est publique. Ajoutez une authentification dans le reverse proxy :
+Par défaut, l’UI est publique.
+Ajoutez une authentification dans le reverse proxy :
 **Caddy (Caddyfile) :**
 ```caddy
 hs-ui.votredomaine.com {
@@ -205,6 +205,22 @@ docker-compose down -v
 - HTTPS : Utilisez un reverse proxy (Caddy, Nginx) pour terminer le TLS.
 - Base de données : SQLite pour la plupart des usages. PostgreSQL pour les charges lourdes.
 - Mises à jour : Utilisez régulièrement --upgrade pour les correctifs de sécurité.
+
+## 🔧 Commandes utiles
+```bash
+# Gérer le service
+sudo systemctl status headscale
+sudo systemctl start headscale
+sudo systemctl stop headscale
+
+# Voir les logs
+sudo journalctl -u headscale.service -n 50 -f
+
+# Commandes Headscale
+headscale -c /etc/headscale/config.yaml users list
+headscale -c /etc/headscale/config.yaml nodes list
+headscale -c /etc/headscale/config.yaml preauthkeys create --user admin --reusable --expiration 90d
+```
 
 ## 📜 Licence
 MIT © 2026 – Vous êtes libre d’utiliser, modifier et redistribuer.
