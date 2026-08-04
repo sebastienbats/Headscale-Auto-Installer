@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Config Fixer v1.5 – Version finale
-# Corrige la configuration pour la compatibilité avec v0.29.2+
+# Headscale Config Fixer v1.6
+# Corrige la configuration avec la syntaxe définitive (prefixes v4/v6)
 # Licensed under MIT License
 
 set -e
@@ -17,7 +17,7 @@ HS_BIN="/usr/local/bin/headscale"
 
 # ========== FONCTIONS ==========
 fix_config() {
-    echo "🔧 Fixing Headscale configuration for v0.29.2+..."
+    echo "🔧 Fixing Headscale configuration for v0.29.2+ (definitive syntax)..."
     
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale is not installed. Please run install-headscale.sh first."
@@ -43,7 +43,7 @@ fix_config() {
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
     
-    echo "📝 Creating new configuration file..."
+    echo "📝 Creating new configuration file (with prefixes v4/v6)..."
     cat > "$HS_CONF" <<EOF
 # Headscale configuration - Compatible v0.29.2+
 server_url: ${server_url}
@@ -77,9 +77,10 @@ log:
   level: info
   format: text
 
-ip_prefixes:
-  - fd7a:115c:a1e0::/48
-  - 100.64.0.0/10
+# CORRECT syntax for v0.29.2+
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
 
 default_preauth_key_expiry: 24h
 EOF
@@ -148,8 +149,8 @@ diagnose_headscale() {
     echo "Configuration file permissions:"
     ls -la "$HS_CONF" 2>/dev/null || echo "Config not found"
     echo ""
-    echo "ip_prefixes in config:"
-    grep -A 2 "^ip_prefixes:" "$HS_CONF" 2>/dev/null || echo "ip_prefixes not found!"
+    echo "Prefixes in config:"
+    grep -A 2 "^prefixes:" "$HS_CONF" 2>/dev/null || echo "prefixes not found!"
     echo ""
     echo "Data directory permissions:"
     ls -la "$HS_DATA_DIR" 2>/dev/null || echo "Data directory not found"
@@ -203,7 +204,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.5"
+echo "🔧 Headscale Config Fixer v1.6"
 echo "============================================================"
 echo ""
 
