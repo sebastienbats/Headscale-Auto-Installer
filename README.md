@@ -104,6 +104,20 @@ docker-compose up -d
 - Headscale : https://hs.votredomaine.com
 - UI : https://hs.votredomaine.com/web (ou https://hs-ui.votredomaine.com)
 
+## 🛠️ Correction de configuration
+Si Headscale ne démarre pas avec des erreurs de configuration :
+```bash
+# Télécharger et exécuter le script de correction
+wget -O fix-headscale.sh https://raw.githubusercontent.com/sebastienbats/Headscale-Auto-Installer/main/fix-headscale.sh
+sudo bash fix-headscale.sh --fix
+
+# Diagnostics
+sudo bash fix-headscale.sh --diagnose
+
+# Redémarrer le service
+sudo bash fix-headscale.sh --restart
+```
+
 ## 🌐 Interface Web (Headscale-UI)
 L’interface Web vous permet de gérer vos utilisateurs, nœuds et clés sans ligne de commande.
 
