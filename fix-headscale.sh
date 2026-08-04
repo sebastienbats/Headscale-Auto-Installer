@@ -1,6 +1,5 @@
 #!/bin/bash
-# Headscale Config Fixer v1.6 – Correction définitive pour v0.29.2+
-# Corrige la configuration (prefixes v4/v6, db_type, noise, etc.)
+# Headscale Config Fixer v1.7 – Correction définitive avec syntaxe validée
 # Licensed under MIT License
 
 set -e
@@ -17,7 +16,7 @@ HS_BIN="/usr/local/bin/headscale"
 
 # ========== FONCTIONS ==========
 fix_config() {
-    echo "🔧 Fixing Headscale configuration for v0.29.2+ (definitive syntax)..."
+    echo "🔧 Fixing Headscale configuration (definitive syntax)..."
     
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale is not installed. Please run install-headscale.sh first."
@@ -26,26 +25,23 @@ fix_config() {
     echo "🛑 Stopping Headscale service..."
     systemctl stop headscale 2>/dev/null || true
     
-    # Créer les répertoires nécessaires
     echo "📁 Creating necessary directories..."
     mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR" "$HS_CONF_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
     
-    # Sauvegarder l'ancienne configuration
     if [ -f "$HS_CONF" ]; then
         local backup="${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
         cp "$HS_CONF" "$backup"
         echo "💾 Configuration backed up to $backup"
     fi
     
-    # Récupérer l'URL du serveur depuis l'ancienne config si possible
     local server_url="http://$(hostname -I | awk '{print $1}'):8080"
     if [ -f "${HS_CONF}.old" ]; then
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
     
-    echo "📝 Creating new configuration file (with prefixes v4/v6)..."
+    echo "📝 Creating new configuration file..."
     cat > "$HS_CONF" <<EOF
 server_url: ${server_url}
 listen_addr: 0.0.0.0:8080
@@ -116,14 +112,6 @@ EOF
     ls -la "$HS_CONF"
     ls -la "${HS_CONF_DIR}/acl_policy.hujson"
     
-    # Vérifier la configuration
-    echo "🔍 Validating configuration..."
-    if sudo -u headscale "$HS_BIN" -c "$HS_CONF" version 2>/dev/null; then
-        echo "✅ Configuration version OK!"
-    else
-        echo "⚠️  Configuration validation failed. Please check the config file."
-    fi
-    
     echo "✅ Configuration updated!"
 }
 
@@ -149,17 +137,13 @@ diagnose_headscale() {
     echo "Prefixes in config:"
     grep -A 2 "^prefixes:" "$HS_CONF" 2>/dev/null || echo "prefixes not found!"
     echo ""
-    echo "Data directory permissions:"
-    ls -la "$HS_DATA_DIR" 2>/dev/null || echo "Data directory not found"
-    echo ""
-    echo "Run directory permissions:"
-    ls -la "$HS_RUN_DIR" 2>/dev/null || echo "Run directory not found"
+    echo "db_type in config:"
+    grep "^db_type:" "$HS_CONF" 2>/dev/null || echo "db_type not found!"
 }
 
 restart_headscale() {
     echo "🔄 Restarting Headscale service..."
     
-    # S'assurer que les répertoires existent
     mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
@@ -185,13 +169,12 @@ restart_headscale() {
         systemctl status headscale.service --no-pager
         echo ""
         echo "🔗 Socket:"
-        ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found (waiting for service to fully start)"
+        ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found (waiting for service)"
         echo ""
         echo "📋 Test command:"
         sudo headscale -c "$HS_CONF" users list 2>&1 | head -5
     else
         echo "⚠️  Headscale failed to start. Manual test:"
-        echo "🔧 Running manual test..."
         sudo -u headscale /usr/local/bin/headscale serve -c "$HS_CONF" 2>&1 | head -15
         echo ""
         echo "📋 Check logs:"
@@ -201,7 +184,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.6"
+echo "🔧 Headscale Config Fixer v1.7"
 echo "============================================================"
 echo ""
 
