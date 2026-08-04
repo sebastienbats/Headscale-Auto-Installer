@@ -1,6 +1,6 @@
 #!/bin/bash
 # Headscale Auto-Installer v2.5.4 – Linux
-# Installation complète avec correction définitive (prefixes v4/v6)
+# Installation avec configuration définitive (prefixes v4/v6, db_type)
 # Licensed under MIT License
 
 set -e
@@ -294,44 +294,32 @@ metrics_listen_addr: ${LISTEN_ADDR}:${METRICS_PORT}
 grpc_listen_addr: ${LISTEN_ADDR}:50443
 grpc_allow_insecure: false
 
-# Private key path (legacy)
 private_key_path: ${HS_DATA_DIR}/private.key
 
-# Noise private key path (NEW for v0.29.2+)
 noise:
   private_key_path: ${HS_DATA_DIR}/noise_private.key
 
-# Database
 db_type: sqlite3
 db_path: ${HS_DATA_DIR}/db.sqlite
 
-# Magic DNS base domain
 base_domain: ${BASE_DOMAIN}
 
-# DNS configuration
 dns:
   nameservers:
     global:
       - ${DNS1}
 ${DNS2:+      - ${DNS2}}
-  domains: []
-  split_dns: {}
 
-# Policy configuration
 policy:
   path: ${HS_CONF_DIR}/acl_policy.hujson
 
-# Log level
 log:
   level: ${LOG_LEVEL}
-  format: text
 
-# Prefixes (CORRECT syntax for v0.29.2+)
 prefixes:
   v4: 100.64.0.0/10
   v6: fd7a:115c:a1e0::/48
 
-# Default preauth key expiry
 default_preauth_key_expiry: 24h
 EOF
 
