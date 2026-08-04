@@ -101,8 +101,11 @@ cp .env.example .env
 docker-compose up -d
 ```
 **Accès :**
-- Headscale : https://hs.votredomaine.com
-- UI : https://hs.votredomaine.com/web (ou https://hs-ui.votredomaine.com)
+- Accès : https://hs.votredomaine.com/web (avec Docker) ou http://votre-ip/web (standalone)
+- Génération de l'API Key :
+  ```bash
+  headscale -c /etc/headscale/config.yaml apikeys create -e 9999d
+  ```
 
 ## 🛠️ Correction de configuration
 Si Headscale ne démarre pas avec des erreurs de configuration :
