@@ -1,13 +1,13 @@
 #!/bin/bash
-# Headscale Config Fixer v1.6
-# Corrige la configuration avec la syntaxe définitive (prefixes v4/v6)
+# Headscale Config Fixer v1.6 – Correction définitive pour v0.29.2+
+# Corrige la configuration (prefixes v4/v6, db_type, noise, etc.)
 # Licensed under MIT License
 
 set -e
 
 exiterr() { echo "❌ Error: $1" >&2; exit 1; }
 
-# ========== VERSION ET CHEMINS ==========
+# ========== CHEMINS ==========
 HS_CONF="/etc/headscale/config.yaml"
 HS_CONF_DIR="/etc/headscale"
 HS_DATA_DIR="/var/lib/headscale"
@@ -32,12 +32,14 @@ fix_config() {
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
     
+    # Sauvegarder l'ancienne configuration
     if [ -f "$HS_CONF" ]; then
         local backup="${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
         cp "$HS_CONF" "$backup"
         echo "💾 Configuration backed up to $backup"
     fi
     
+    # Récupérer l'URL du serveur depuis l'ancienne config si possible
     local server_url="http://$(hostname -I | awk '{print $1}'):8080"
     if [ -f "${HS_CONF}.old" ]; then
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
@@ -45,7 +47,6 @@ fix_config() {
     
     echo "📝 Creating new configuration file (with prefixes v4/v6)..."
     cat > "$HS_CONF" <<EOF
-# Headscale configuration - Compatible v0.29.2+
 server_url: ${server_url}
 listen_addr: 0.0.0.0:8080
 metrics_listen_addr: 0.0.0.0:9090
@@ -67,17 +68,13 @@ dns:
     global:
       - 1.1.1.1
       - 1.0.0.1
-  domains: []
-  split_dns: {}
 
 policy:
   path: ${HS_CONF_DIR}/acl_policy.hujson
 
 log:
   level: info
-  format: text
 
-# CORRECT syntax for v0.29.2+
 prefixes:
   v4: 100.64.0.0/10
   v6: fd7a:115c:a1e0::/48
