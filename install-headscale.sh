@@ -1,7 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.7 – Linux
-# Utilise la nouvelle syntaxe de configuration (database, policy, prefixes) compatible v0.29.3+
-# Version Headscale par défaut : 0.29.3
+# Headscale Auto-Installer v2.5.8 – Linux
+# Configuration conforme à Headscale 0.29.3+ (dns.magic_dns, dns.base_domain)
 # Licensed under MIT License
 
 set -e
@@ -12,7 +11,7 @@ exiterr3() { exiterr "'yum install' failed."; }
 exiterr4() { exiterr "'zypper install' failed."; }
 
 # ========== VERSION ET CHEMINS ==========
-HS_VERSION="0.29.3"  # Dernière version stable
+HS_VERSION="0.29.3"
 HS_CONF="/etc/headscale/config.yaml"
 HS_CONF_DIR="/etc/headscale"
 HS_DATA_DIR="/var/lib/headscale"
@@ -307,9 +306,9 @@ database:
     write_ahead_log: true
     wal_autocheckpoint: 1000
 
-base_domain: ${BASE_DOMAIN}
-
 dns:
+  magic_dns: true
+  base_domain: ${BASE_DOMAIN}
   nameservers:
     global:
       - ${DNS1}
@@ -652,7 +651,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.7"
+echo "🚀 Headscale Auto-Installer v2.5.8"
 echo "============================================================"
 echo ""
 
