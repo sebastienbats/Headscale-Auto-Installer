@@ -2,6 +2,10 @@
   "groups": {
     "group:admins": ["admin@headscale.internal"]
   },
+  "tagOwners": {
+    "tag:gateway": ["group:admins"],
+    "tag:exit-node": ["group:admins"]
+  },
   "hosts": {},
   "acls": [
     {
