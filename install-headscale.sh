@@ -1,7 +1,8 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.22 – Linux
+# Headscale Auto-Installer v2.5.23 – Linux
 # Version Headscale-UI : 2026.03.17 (build précompilé)
 # Configuration Nginx avec proxy API vers Headscale
+# Affichage d'un résumé des URLs en fin d'installation
 # Licensed under MIT License
 
 set -e
@@ -628,8 +629,6 @@ EOF
     systemctl reload nginx 2>/dev/null || systemctl restart nginx
 
     echo "✅ Headscale-UI installed successfully!"
-    echo "🌐 Access UI at: http://$(hostname -I | awk '{print $1}')/web"
-    echo "ℹ️  Don't forget to generate an API key: headscale -c $HS_CONF apikeys create -e 9999d"
 }
 
 # ========== FONCTION DE MISE À JOUR ==========
@@ -682,9 +681,61 @@ diagnose_headscale() {
     ls -la "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || echo "ACL policy not found"
 }
 
+# ========== FINISH SETUP AVEC RÉSUMÉ DES URLs ==========
+finish_setup() {
+    echo ""
+    echo "============================================================"
+    if systemctl is-active --quiet headscale.service; then
+        echo "✅ Headscale installation completed successfully!"
+    else
+        echo "⚠️  Installation completed with warnings."
+        echo "   Headscale service is not running. Check:"
+        echo "   - systemctl status headscale"
+        echo "   - journalctl -u headscale.service -n 50"
+        echo ""
+        echo "   Try starting it manually:"
+        echo "   sudo systemctl start headscale"
+    fi
+    echo "============================================================"
+    echo ""
+    echo "📋 Headscale URLs & usage:"
+    echo "--------------------------"
+    echo ""
+    echo "🔗 Server URL (for Tailscale clients):"
+    echo "   $computed_server_url"
+    echo "   Usage: tailscale up --login-server $computed_server_url --authkey <key>"
+    echo ""
+    if [ "$INSTALL_UI" = 1 ]; then
+        local local_ip=$(hostname -I | awk '{print $1}')
+        echo "🌐 Web UI (Headscale-UI):"
+        echo "   http://${local_ip}/web/"
+        if [ -n "$public_ip" ]; then
+            echo "   http://${public_ip}/web/  (if port 80 is open from outside)"
+        fi
+        echo "   Usage: open the URL in your browser, enter the API key generated below."
+        echo ""
+        echo "🔑 API Key for Web UI:"
+        echo "   (generated during installation, see above)"
+        echo ""
+        echo "📡 API endpoint (via Nginx proxy):"
+        echo "   http://${local_ip}/api/v1/..."
+        if [ -n "$public_ip" ]; then
+            echo "   http://${public_ip}/api/v1/...  (if port 80 is open)"
+        fi
+        echo "   Usage: API calls are proxied to Headscale on port $PORT."
+    else
+        echo "💡 To install the Web UI, run: sudo bash $0 --install-ui"
+    fi
+    echo ""
+    echo "ℹ️  Headscale is currently served over HTTP (not HTTPS)."
+    echo "   For production, set up a TLS reverse proxy (e.g. Caddy or Nginx with certbot)."
+    echo "   Or use the Docker deployment with built-in Caddy HTTPS support."
+    echo "============================================================"
+}
+
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.22"
+echo "🚀 Headscale Auto-Installer v2.5.23"
 echo "============================================================"
 echo ""
 
@@ -764,6 +815,7 @@ if [ "$INSTALL_UI" = 1 ]; then
     fi
     install_headscale_ui
     generate_api_key_for_ui
+    finish_setup
     exit 0
 fi
 
@@ -820,7 +872,7 @@ if [ -f "$HS_BIN" ] && [ -f "$HS_CONF" ] && [ "$REINSTALL" = 0 ]; then
         10) backup_config; exit 0 ;;
         11) stop_headscale; backup_config; echo "🔄 Proceeding with reinstallation..."; REINSTALL=1 ;;
         12) upgrade_headscale; exit 0 ;;
-        13) install_headscale_ui; generate_api_key_for_ui; exit 0 ;;
+        13) install_headscale_ui; generate_api_key_for_ui; finish_setup; exit 0 ;;
         14) generate_api_key_for_ui; exit 0 ;;
         15) diagnose_headscale; exit 0 ;;
         16) exit 0 ;;
