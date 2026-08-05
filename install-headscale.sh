@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.9 – Linux
-# Configuration conforme à l'exemple officiel v0.29.3 (dns, database, policy)
+# Headscale Auto-Installer v2.5.10 – Linux
+# Configuration finale avec tagOwners pour autoApprovers
 # Utilise admin@headscale.internal comme utilisateur par défaut
 # Licensed under MIT License
 
@@ -26,7 +26,7 @@ HS_LOG="/var/log/headscale.log"
 # ========== VARIABLES PAR DÉFAUT ==========
 SERVER_URL=""
 PORT="8080"
-USERNAME="admin@headscale.internal"   # Nouveau format email
+USERNAME="admin@headscale.internal"
 BASE_DOMAIN="headscale.internal"
 DNS1="1.1.1.1"
 DNS2="1.0.0.1"
@@ -286,7 +286,7 @@ create_directories() {
     chown headscale:headscale "$HS_LOG"
 }
 
-# ========== CONFIGURATION DÉFINITIVE (inspirée de l'exemple officiel v0.29.3) ==========
+# ========== CONFIGURATION DÉFINITIVE ==========
 create_config() {
     cat > "$HS_CONF" <<EOF
 server_url: ${computed_server_url}
@@ -335,6 +335,10 @@ EOF
 {
   "groups": {
     "group:admins": ["${USERNAME}"]
+  },
+  "tagOwners": {
+    "tag:gateway": ["group:admins"],
+    "tag:exit-node": ["group:admins"]
   },
   "hosts": {},
   "acls": [
@@ -653,7 +657,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.9"
+echo "🚀 Headscale Auto-Installer v2.5.10"
 echo "============================================================"
 echo ""
 
