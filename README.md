@@ -15,7 +15,7 @@ Ces scripts permettent de déployer un serveur Headscale en quelques secondes, a
 - **Installation automatique** sur Linux avec systemd
 - **Support Docker** avec Docker Compose (Headscale + UI + Caddy)
 - **Interface Web** intégrée (Headscale-UI)
-- **Reverse proxy** Caddy pré‑configuré
+- **Reverse proxy** Caddy pré‑configuré (Le reverse proxy Caddy fait partie du déploiement Docker)
 - **Variables d'environnement** et fichier `.env`
 - **Backup automatique** avant réinstallation/mise à jour
 - **Vérifications pré‑installation** (ports, disque, connectivité)
@@ -70,6 +70,10 @@ Headscale-Auto-Installer/
 ### Linux
 
 **Installation interactive :**
+- Le script install-headscale.sh est conçu pour une installation native (sans Docker) et configure Nginx pour Headscale-UI
+  - Il installe Nginx pour servir Headscale-UI.
+  - Il configure un proxy API vers Headscale sur le port 8080.
+  - Il utilise listen 80 default_server pour écouter sur le port HTTP.
 ```bash
 git clone https://github.com/sebastienbats/Headscale-Auto-Installer.git
 cd Headscale-Auto-Installer
@@ -95,7 +99,11 @@ sudo bash install-headscale.sh --env prod
 ```bash
 sudo bash install-headscale.sh --upgrade
 ```
-### Docker (recommandé pour l'UI)
+### Déploiement Docker (avec Caddy)
+- Dans le dossier docker/, vous avez :
+  - docker-compose.yml qui orchestre Headscale, Headscale-UI et Caddy.
+  - caddy/Caddyfile qui configure le reverse proxy avec HTTPS automatique (si un domaine valide est fourni).
+  - Ce déploiement est indépendant de l’installation native et peut coexister si vous utilisez des ports différents (ex: 8080 pour Headscale, 80 pour Nginx ou Caddy).
 ```bash
 git clone https://github.com/sebastienbats/Headscale-Auto-Installer.git
 cd Headscale-Auto-Installer/docker
@@ -109,6 +117,14 @@ docker-compose up -d
   ```bash
   headscale -c /etc/headscale/config.yaml apikeys create -e 9999d
   ```
+## 📝 Récapitulatif
+|Composant|Installation native (script)|Docker (docker-compose)|
+|---------|----------------------------|-----------------------|
+|Headscale|Binaire téléchargé, service systemd|Conteneur avec configuration intégrée|
+|Interface Web|Nginx (port 80) avec proxy API|Headscale-UI + Caddy (ports 80/443)|
+|Reverse proxy|Nginx (configuré par le script)|Caddy (avec HTTPS automatique)|
+|Ports|Headscale sur 8080, Nginx sur 80|Headscale interne sur 8080, Caddy sur 80/443|
+- Si vous souhaitez utiliser Caddy à la place de Nginx pour l’installation native, il faudrait adapter le script pour installer Caddy plutôt que Nginx, mais ce n’est pas le cas actuellement.
 
 ## 🛠️ Correction de configuration
 Si Headscale ne démarre pas avec des erreurs de configuration :
