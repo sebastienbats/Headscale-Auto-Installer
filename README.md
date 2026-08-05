@@ -255,7 +255,7 @@ sudo headscale -c /etc/headscale/config.yaml users list
 sudo headscale -c /etc/headscale/config.yaml users create nouveluser@domaine.com
 
 # Créer une clé
-sudo headscale -c /etc/headscale/config.yaml preauthkeys create --user admin@headscale.internal --reusable --expiration 90d
+sudo headscale -c /etc/headscale/config.yaml preauthkeys create --user <id> --reusable --expiration 90d
 ```
 
 ## 📜 Licence
