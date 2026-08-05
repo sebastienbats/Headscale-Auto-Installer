@@ -1,8 +1,7 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.14 – Linux
-# Version fixe de Headscale-UI : 2026.03.17
+# Headscale Auto-Installer v2.5.17 – Linux
+# Version Headscale-UI : 2026.03.17 (pas de fallback)
 # Configuration DERP public + tagOwners
-# Utilise admin@headscale.internal comme utilisateur par défaut
 # Licensed under MIT License
 
 set -e
@@ -14,7 +13,8 @@ exiterr4() { exiterr "'zypper install' failed."; }
 
 # ========== VERSION ET CHEMINS ==========
 HS_VERSION="0.29.3"
-UI_VERSION="2026.03.17"          # Version fixe de Headscale-UI
+UI_VERSION="2026.03.17"
+UI_URL="https://github.com/gurucomputing/headscale-ui/archive/refs/tags/${UI_VERSION}.tar.gz"
 HS_CONF="/etc/headscale/config.yaml"
 HS_CONF_DIR="/etc/headscale"
 HS_DATA_DIR="/var/lib/headscale"
@@ -519,13 +519,14 @@ generate_api_key_for_ui() {
     fi
 }
 
-# ========== FONCTION D'INSTALLATION UI (version fixe 2026.03.17) ==========
+# ========== FONCTION D'INSTALLATION UI (URL unique, pas de fallback) ==========
 install_headscale_ui() {
     echo "🌐 Installing Headscale-UI ${UI_VERSION}..."
-    
+
     UI_DIR="/var/www/headscale-ui"
     NGINX_CONF="/etc/nginx/sites-available/headscale-ui"
-    
+    TMP_ARCHIVE="/tmp/headscale-ui-${UI_VERSION}.tar.gz"
+
     if ! command -v nginx >/dev/null 2>&1; then
         echo "📦 Installing Nginx..."
         case "$os" in
@@ -540,13 +541,21 @@ install_headscale_ui() {
                 ;;
         esac
     fi
-    
+
     echo "📥 Downloading Headscale-UI ${UI_VERSION}..."
     mkdir -p "$UI_DIR"
-    if ! wget -qO- "https://github.com/gurucomputing/headscale-ui/releases/download/${UI_VERSION}/headscale-ui.tar.gz" | tar -xz -C "$UI_DIR"; then
-        exiterr "Failed to download Headscale-UI."
+
+    if ! wget -q --tries=3 --timeout=15 -O "$TMP_ARCHIVE" "$UI_URL"; then
+        exiterr "Failed to download Headscale-UI ${UI_VERSION} from $UI_URL"
     fi
-    
+
+    echo "📦 Extracting archive..."
+    if ! tar -xzf "$TMP_ARCHIVE" -C "$UI_DIR" --strip-components=1; then
+        rm -f "$TMP_ARCHIVE"
+        exiterr "Failed to extract Headscale-UI archive."
+    fi
+    rm -f "$TMP_ARCHIVE"
+
     echo "⚙️  Configuring Nginx..."
     cat > "$NGINX_CONF" <<EOF
 server {
@@ -559,10 +568,10 @@ server {
     }
 }
 EOF
-    
+
     ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/ 2>/dev/null || true
     systemctl reload nginx 2>/dev/null || systemctl restart nginx
-    
+
     echo "✅ Headscale-UI installed successfully!"
     echo "🌐 Access UI at: http://$(hostname -I | awk '{print $1}')/web"
     echo "ℹ️  Don't forget to generate an API key: headscale -c $HS_CONF apikeys create -e 9999d"
@@ -620,7 +629,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.14"
+echo "🚀 Headscale Auto-Installer v2.5.17"
 echo "============================================================"
 echo ""
 
