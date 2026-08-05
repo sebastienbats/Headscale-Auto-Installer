@@ -11,7 +11,7 @@ services:
     environment:
       - HS_SERVER_URL=${HS_SERVER_URL:-http://localhost:8080}
       - HS_PORT=${HS_PORT:-8080}
-      - HS_USER=${HS_USER:-admin}
+      - HS_USER=${HS_USER:-admin@headscale.internal}
       - HS_BASE_DOMAIN=${HS_BASE_DOMAIN:-headscale.internal}
       - HS_DNS1=${HS_DNS1:-1.1.1.1}
       - HS_DNS2=${HS_DNS2:-1.0.0.1}
