@@ -236,6 +236,9 @@ sudo systemctl stop headscale
 # Voir les logs
 sudo journalctl -u headscale.service -n 50 -f
 
+# Exécution manuelle pour capturer l’erreur
+sudo -u headscale /usr/local/bin/headscale serve -c /etc/headscale/config.yaml 2>&1 | head -50
+
 # Commandes Headscale
 headscale -c /etc/headscale/config.yaml users list
 headscale -c /etc/headscale/config.yaml nodes list
