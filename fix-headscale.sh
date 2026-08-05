@@ -1,5 +1,6 @@
 #!/bin/bash
-# Headscale Config Fixer v1.9 – Utilise la nouvelle syntaxe de configuration (database, policy, prefixes) compatible v0.29.3+
+# Headscale Config Fixer v1.10 – Corrige la configuration pour Headscale 0.29.3+
+# Ajoute dns.magic_dns, dns.base_domain et structure database
 # Licensed under MIT License
 
 set -e
@@ -16,32 +17,32 @@ HS_BIN="/usr/local/bin/headscale"
 
 # ========== FONCTIONS ==========
 fix_config() {
-    echo "🔧 Fixing Headscale configuration (definitive syntax – database, policy, prefixes)..."
-    
+    echo "🔧 Fixing Headscale configuration (v0.29.3+ compatible)..."
+
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale is not installed. Please run install-headscale.sh first."
     fi
-    
+
     echo "🛑 Stopping Headscale service..."
     systemctl stop headscale 2>/dev/null || true
-    
+
     echo "📁 Creating necessary directories..."
     mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR" "$HS_CONF_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
-    
+
     if [ -f "$HS_CONF" ]; then
         local backup="${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
         cp "$HS_CONF" "$backup"
         echo "💾 Configuration backed up to $backup"
     fi
-    
+
     local server_url="http://$(hostname -I | awk '{print $1}'):8080"
     if [ -f "${HS_CONF}.old" ]; then
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
-    
-    echo "📝 Creating new configuration file (compatible v0.29.3+)..."
+
+    echo "📝 Creating new configuration file (definitive syntax)..."
     cat > "$HS_CONF" <<EOF
 server_url: ${server_url}
 listen_addr: 0.0.0.0:8080
@@ -61,9 +62,9 @@ database:
     write_ahead_log: true
     wal_autocheckpoint: 1000
 
-base_domain: headscale.internal
-
 dns:
+  magic_dns: true
+  base_domain: headscale.internal
   nameservers:
     global:
       - 1.1.1.1
@@ -113,11 +114,11 @@ EOF
     echo "🔑 Setting correct permissions..."
     chown root:headscale "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
     chmod 640 "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
-    
+
     echo "📋 Permissions vérifiées:"
     ls -la "$HS_CONF"
     ls -la "${HS_CONF_DIR}/acl_policy.hujson"
-    
+
     echo "✅ Configuration updated!"
 }
 
@@ -140,20 +141,23 @@ diagnose_headscale() {
     echo "Configuration file permissions:"
     ls -la "$HS_CONF" 2>/dev/null || echo "Config not found"
     echo ""
-    echo "Database section in config:"
+    echo "Database section:"
     grep -A 5 "^database:" "$HS_CONF" 2>/dev/null || echo "database section not found"
     echo ""
-    echo "Prefixes in config:"
+    echo "DNS section:"
+    grep -A 6 "^dns:" "$HS_CONF" 2>/dev/null || echo "dns section not found"
+    echo ""
+    echo "Prefixes:"
     grep -A 2 "^prefixes:" "$HS_CONF" 2>/dev/null || echo "prefixes not found"
 }
 
 restart_headscale() {
     echo "🔄 Restarting Headscale service..."
-    
+
     mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
-    
+
     if [ -f "$HS_CONF" ]; then
         echo "🔑 Checking permissions..."
         chown root:headscale "$HS_CONF" 2>/dev/null || true
@@ -163,11 +167,11 @@ restart_headscale() {
         echo "📋 Configuration permissions:"
         ls -la "$HS_CONF"
     fi
-    
+
     systemctl daemon-reload
     systemctl restart headscale
     sleep 5
-    
+
     if systemctl is-active --quiet headscale.service; then
         echo "✅ Headscale is now running!"
         echo ""
@@ -190,7 +194,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.9"
+echo "🔧 Headscale Config Fixer v1.10"
 echo "============================================================"
 echo ""
 
