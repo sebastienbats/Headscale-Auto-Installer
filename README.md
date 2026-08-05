@@ -82,6 +82,7 @@ sudo bash install-headscale.sh --auto \
   --port 8443 \
   --user admin \
   --basedomain internal.local \
+  --install-ui \
   --dns1 1.1.1.1 \
   --dns2 9.9.9.9
 ```
@@ -242,7 +243,7 @@ sudo -u headscale /usr/local/bin/headscale serve -c /etc/headscale/config.yaml 2
 # Commandes Headscale
 headscale -c /etc/headscale/config.yaml users list
 headscale -c /etc/headscale/config.yaml nodes list
-headscale -c /etc/headscale/config.yaml preauthkeys create --user admin --reusable --expiration 90d
+headscale -c /etc/headscale/config.yaml preauthkeys create --user admin@headscale.internal --reusable --expiration 90d
 ```
 
 ## 📜 Licence
