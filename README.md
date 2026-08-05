@@ -252,7 +252,7 @@ sudo systemctl start headscale
 sudo headscale -c /etc/headscale/config.yaml users list
 
 # Créer un utilisateur
-sudo headscale -c /etc/headscale/config.yaml users create nouveluser@domaine.com
+sudo headscale -c /etc/headscale/config.yaml users create nouveluser@headscale.internal
 
 # Créer une clé
 sudo headscale -c /etc/headscale/config.yaml preauthkeys create --user <id> --reusable --expiration 90d
