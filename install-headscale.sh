@@ -1,7 +1,7 @@
 #!/bin/bash
 # Headscale Auto-Installer v2.5.18 – Linux
-# Version Headscale-UI : 2026.03.17 (build précompilé, fichier ZIP)
-# Configuration DERP public + tagOwners
+# Version Headscale-UI : 2026.03.17 (build précompilé en ZIP)
+# Installation automatique de unzip
 # Licensed under MIT License
 
 set -e
@@ -519,7 +519,7 @@ generate_api_key_for_ui() {
     fi
 }
 
-# ========== FONCTION D'INSTALLATION UI (build précompilé ZIP) ==========
+# ========== FONCTION D'INSTALLATION UI (build précompilé en ZIP) ==========
 install_headscale_ui() {
     echo "🌐 Installing Headscale-UI ${UI_VERSION}..."
 
@@ -527,15 +527,21 @@ install_headscale_ui() {
     NGINX_CONF="/etc/nginx/sites-available/headscale-ui"
     TMP_ARCHIVE="/tmp/headscale-ui-${UI_VERSION}.zip"
 
-    # Vérifier et installer les dépendances
-    if ! command -v nginx >/dev/null 2>&1; then
-        echo "📦 Installing Nginx..."
+    # Vérifier et installer Nginx + unzip
+    if ! command -v nginx >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
+        echo "📦 Installing Nginx and unzip..."
         case "$os" in
             ubuntu|debian)
+                apt-get -y update
                 apt-get -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
                 ;;
             almalinux|rocky|centos|rhel|fedora)
-                yum -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
+                if [[ "$os" == "fedora" ]]; then
+                    dnf -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
+                else
+                    yum -y install epel-release || true
+                    yum -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
+                fi
                 ;;
             opensuse)
                 zypper -n install nginx unzip || exiterr "Failed to install Nginx or unzip."
@@ -557,11 +563,22 @@ install_headscale_ui() {
     fi
     rm -f "$TMP_ARCHIVE"
 
-    # Si les fichiers sont dans un sous-dossier "dist", on les remonte
+    # Si les fichiers sont dans un dossier "dist" (ou "build"), les remonter à la racine
     if [ -d "$UI_DIR/dist" ]; then
         echo "📁 Moving files from dist/ to root..."
         mv "$UI_DIR/dist"/* "$UI_DIR/"
         rmdir "$UI_DIR/dist"
+    fi
+    if [ -d "$UI_DIR/build" ]; then
+        echo "📁 Moving files from build/ to root..."
+        mv "$UI_DIR/build"/* "$UI_DIR/"
+        rmdir "$UI_DIR/build"
+    fi
+
+    # Vérifier que l'index existe
+    if [ ! -f "$UI_DIR/index.html" ]; then
+        echo "⚠️  Warning: index.html not found. Files present:"
+        ls -la "$UI_DIR"
     fi
 
     echo "⚙️  Configuring Nginx..."
