@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.17 – Linux
-# Version Headscale-UI : 2026.03.17 (pas de fallback)
+# Headscale Auto-Installer v2.5.18 – Linux
+# Version Headscale-UI : 2026.03.17 (build précompilé, fichier ZIP)
 # Configuration DERP public + tagOwners
 # Licensed under MIT License
 
@@ -14,7 +14,7 @@ exiterr4() { exiterr "'zypper install' failed."; }
 # ========== VERSION ET CHEMINS ==========
 HS_VERSION="0.29.3"
 UI_VERSION="2026.03.17"
-UI_URL="https://github.com/gurucomputing/headscale-ui/archive/refs/tags/${UI_VERSION}.tar.gz"
+UI_URL="https://github.com/gurucomputing/headscale-ui/releases/download/${UI_VERSION}/headscale-ui.zip"
 HS_CONF="/etc/headscale/config.yaml"
 HS_CONF_DIR="/etc/headscale"
 HS_DATA_DIR="/var/lib/headscale"
@@ -519,30 +519,31 @@ generate_api_key_for_ui() {
     fi
 }
 
-# ========== FONCTION D'INSTALLATION UI (URL unique, pas de fallback) ==========
+# ========== FONCTION D'INSTALLATION UI (build précompilé ZIP) ==========
 install_headscale_ui() {
     echo "🌐 Installing Headscale-UI ${UI_VERSION}..."
 
     UI_DIR="/var/www/headscale-ui"
     NGINX_CONF="/etc/nginx/sites-available/headscale-ui"
-    TMP_ARCHIVE="/tmp/headscale-ui-${UI_VERSION}.tar.gz"
+    TMP_ARCHIVE="/tmp/headscale-ui-${UI_VERSION}.zip"
 
+    # Vérifier et installer les dépendances
     if ! command -v nginx >/dev/null 2>&1; then
         echo "📦 Installing Nginx..."
         case "$os" in
             ubuntu|debian)
-                apt-get -y install nginx || exiterr "Failed to install Nginx."
+                apt-get -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
                 ;;
             almalinux|rocky|centos|rhel|fedora)
-                yum -y install nginx || exiterr "Failed to install Nginx."
+                yum -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
                 ;;
             opensuse)
-                zypper -n install nginx || exiterr "Failed to install Nginx."
+                zypper -n install nginx unzip || exiterr "Failed to install Nginx or unzip."
                 ;;
         esac
     fi
 
-    echo "📥 Downloading Headscale-UI ${UI_VERSION}..."
+    echo "📥 Downloading Headscale-UI ${UI_VERSION} (prebuilt)..."
     mkdir -p "$UI_DIR"
 
     if ! wget -q --tries=3 --timeout=15 -O "$TMP_ARCHIVE" "$UI_URL"; then
@@ -550,11 +551,18 @@ install_headscale_ui() {
     fi
 
     echo "📦 Extracting archive..."
-    if ! tar -xzf "$TMP_ARCHIVE" -C "$UI_DIR" --strip-components=1; then
+    if ! unzip -q "$TMP_ARCHIVE" -d "$UI_DIR"; then
         rm -f "$TMP_ARCHIVE"
         exiterr "Failed to extract Headscale-UI archive."
     fi
     rm -f "$TMP_ARCHIVE"
+
+    # Si les fichiers sont dans un sous-dossier "dist", on les remonte
+    if [ -d "$UI_DIR/dist" ]; then
+        echo "📁 Moving files from dist/ to root..."
+        mv "$UI_DIR/dist"/* "$UI_DIR/"
+        rmdir "$UI_DIR/dist"
+    fi
 
     echo "⚙️  Configuring Nginx..."
     cat > "$NGINX_CONF" <<EOF
@@ -629,7 +637,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.17"
+echo "🚀 Headscale Auto-Installer v2.5.18"
 echo "============================================================"
 echo ""
 
