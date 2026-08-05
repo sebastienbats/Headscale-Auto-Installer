@@ -1,5 +1,5 @@
 #!/bin/bash
-# Headscale Config Fixer v1.7 – Correction définitive avec syntaxe validée
+# Headscale Config Fixer v1.8 – Utilise la nouvelle syntaxe de configuration (database, policy, prefixes)
 # Licensed under MIT License
 
 set -e
@@ -16,7 +16,7 @@ HS_BIN="/usr/local/bin/headscale"
 
 # ========== FONCTIONS ==========
 fix_config() {
-    echo "🔧 Fixing Headscale configuration (definitive syntax)..."
+    echo "🔧 Fixing Headscale configuration (definitive syntax – database, policy, prefixes)..."
     
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale is not installed. Please run install-headscale.sh first."
@@ -41,7 +41,7 @@ fix_config() {
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
     
-    echo "📝 Creating new configuration file..."
+    echo "📝 Creating new configuration file (compatible v0.29.2+)..."
     cat > "$HS_CONF" <<EOF
 server_url: ${server_url}
 listen_addr: 0.0.0.0:8080
@@ -54,8 +54,12 @@ private_key_path: ${HS_DATA_DIR}/private.key
 noise:
   private_key_path: ${HS_DATA_DIR}/noise_private.key
 
-db_type: sqlite3
-db_path: ${HS_DATA_DIR}/db.sqlite
+database:
+  type: sqlite
+  sqlite:
+    path: ${HS_DATA_DIR}/db.sqlite
+    write_ahead_log: true
+    wal_autocheckpoint: 1000
 
 base_domain: headscale.internal
 
@@ -66,10 +70,12 @@ dns:
       - 1.0.0.1
 
 policy:
+  mode: file
   path: ${HS_CONF_DIR}/acl_policy.hujson
 
 log:
   level: info
+  format: text
 
 prefixes:
   v4: 100.64.0.0/10
@@ -134,11 +140,11 @@ diagnose_headscale() {
     echo "Configuration file permissions:"
     ls -la "$HS_CONF" 2>/dev/null || echo "Config not found"
     echo ""
-    echo "Prefixes in config:"
-    grep -A 2 "^prefixes:" "$HS_CONF" 2>/dev/null || echo "prefixes not found!"
+    echo "Database section in config:"
+    grep -A 5 "^database:" "$HS_CONF" 2>/dev/null || echo "database section not found"
     echo ""
-    echo "db_type in config:"
-    grep "^db_type:" "$HS_CONF" 2>/dev/null || echo "db_type not found!"
+    echo "Prefixes in config:"
+    grep -A 2 "^prefixes:" "$HS_CONF" 2>/dev/null || echo "prefixes not found"
 }
 
 restart_headscale() {
@@ -184,7 +190,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.7"
+echo "🔧 Headscale Config Fixer v1.8"
 echo "============================================================"
 echo ""
 
