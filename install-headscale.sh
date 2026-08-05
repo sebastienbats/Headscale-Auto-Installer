@@ -1,6 +1,7 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.8 – Linux
-# Configuration conforme à Headscale 0.29.3+ (dns.magic_dns, dns.base_domain)
+# Headscale Auto-Installer v2.5.9 – Linux
+# Configuration conforme à l'exemple officiel v0.29.3 (dns, database, policy)
+# Utilise admin@headscale.internal comme utilisateur par défaut
 # Licensed under MIT License
 
 set -e
@@ -25,7 +26,7 @@ HS_LOG="/var/log/headscale.log"
 # ========== VARIABLES PAR DÉFAUT ==========
 SERVER_URL=""
 PORT="8080"
-USERNAME="admin"
+USERNAME="admin@headscale.internal"   # Nouveau format email
 BASE_DOMAIN="headscale.internal"
 DNS1="1.1.1.1"
 DNS2="1.0.0.1"
@@ -285,7 +286,7 @@ create_directories() {
     chown headscale:headscale "$HS_LOG"
 }
 
-# ========== CONFIGURATION DÉFINITIVE (compatible v0.29.3) ==========
+# ========== CONFIGURATION DÉFINITIVE (inspirée de l'exemple officiel v0.29.3) ==========
 create_config() {
     cat > "$HS_CONF" <<EOF
 server_url: ${computed_server_url}
@@ -309,6 +310,7 @@ database:
 dns:
   magic_dns: true
   base_domain: ${BASE_DOMAIN}
+  override_local_dns: true
   nameservers:
     global:
       - ${DNS1}
@@ -332,7 +334,7 @@ EOF
     cat > "${HS_CONF_DIR}/acl_policy.hujson" <<EOF
 {
   "groups": {
-    "group:admins": ["admin"]
+    "group:admins": ["${USERNAME}"]
   },
   "hosts": {},
   "acls": [
@@ -651,7 +653,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.8"
+echo "🚀 Headscale Auto-Installer v2.5.9"
 echo "============================================================"
 echo ""
 
@@ -692,7 +694,7 @@ while [ $# -gt 0 ]; do
             echo "  --env <dev|prod>           Environment profile"
             echo "  --serverurl <url>          Public server URL"
             echo "  --port <port>              HTTP listen port"
-            echo "  --user <username>          Initial admin user"
+            echo "  --user <username>          Initial admin user (must contain @)"
             echo "  --basedomain <domain>      MagicDNS base domain"
             echo "  --dns1 <ip>                Primary DNS server"
             echo "  --dns2 <ip>                Secondary DNS server"
@@ -826,8 +828,14 @@ if [ "$AUTO" = 0 ] && [ -z "$SERVER_URL" ] && [ -z "$PORT" ] && [ -z "$USERNAME"
     fi
     read -rp "TCP port [8080]: " p
     [[ -n "$p" ]] && PORT="$p"
-    read -rp "Initial username [admin]: " u
-    [[ -n "$u" ]] && USERNAME="$u"
+    read -rp "Initial username (must contain @, e.g. admin@example.com) [admin@headscale.internal]: " u
+    if [[ -n "$u" ]]; then
+        if [[ "$u" != *"@"* ]]; then
+            echo "⚠️  Username must contain '@'. Using default admin@headscale.internal"
+        else
+            USERNAME="$u"
+        fi
+    fi
     read -rp "MagicDNS base domain [headscale.internal]: " d
     [[ -n "$d" ]] && BASE_DOMAIN="$d"
     read -rp "Primary DNS server [1.1.1.1]: " d1
