@@ -1,7 +1,7 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.20 – Linux
+# Headscale Auto-Installer v2.5.21 – Linux
 # Version Headscale-UI : 2026.03.17 (build précompilé, détection du dossier web/)
-# Configuration Nginx adaptée, suppression du site par défaut
+# Configuration Nginx avec root, suppression du site par défaut
 # Licensed under MIT License
 
 set -e
@@ -588,24 +588,26 @@ install_headscale_ui() {
         exiterr "Headscale-UI build missing."
     fi
 
-    echo "⚙️  Configuring Nginx..."
-    cat > "$NGINX_CONF" <<EOF
-server {
-    listen 80 default_server;
-    server_name _;
-
-    location /web/ {
-        alias $UI_STATIC_PATH/;
-        try_files \$uri \$uri/ =404;
-    }
-}
-EOF
-
     # Désactiver le site par défaut pour éviter les conflits de server_name
     if [ -f /etc/nginx/sites-enabled/default ]; then
         echo "🗑️  Removing default Nginx site to avoid conflicts..."
         sudo rm -f /etc/nginx/sites-enabled/default
     fi
+
+    echo "⚙️  Configuring Nginx (using root)..."
+    cat > "$NGINX_CONF" <<EOF
+server {
+    listen 80 default_server;
+    server_name _;
+
+    root $UI_DIR;
+    index index.html;
+
+    location /web/ {
+        try_files \$uri \$uri/ =404;
+    }
+}
+EOF
 
     # Activer le site Headscale-UI
     ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/ 2>/dev/null || true
@@ -673,7 +675,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.20"
+echo "🚀 Headscale Auto-Installer v2.5.21"
 echo "============================================================"
 echo ""
 
