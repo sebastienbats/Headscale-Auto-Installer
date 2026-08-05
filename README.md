@@ -165,7 +165,7 @@ location /web/ {
 |--------|-----------|------|
 |HS_SERVER_URL|URL publique du serveur|IP publique|
 |HS_PORT|Port d'écoute|8080|
-|HS_USER|Utilisateur initial|admin@headscale.internal|
+|HS_USER|Utilisateur initial (doit contenir @)|admin@headscale.internal|
 |HS_BASE_DOMAIN|Domaine MagicDNS|headscale.internal|
 |HS_DNS1|DNS primaire|1.1.1.1|
 |HS_DNS2|DNS secondaire|1.0.0.1|
