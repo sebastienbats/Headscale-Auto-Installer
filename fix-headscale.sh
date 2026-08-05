@@ -1,13 +1,11 @@
 #!/bin/bash
-# Headscale Config Fixer v1.12 – Ajoute tagOwners pour autoApprovers
-# Configuration compatible Headscale v0.29.3+
+# Headscale Config Fixer v1.15 – Configuration DERP public + tagOwners
 # Licensed under MIT License
 
 set -e
 
 exiterr() { echo "❌ Error: $1" >&2; exit 1; }
 
-# ========== CHEMINS ==========
 HS_CONF="/etc/headscale/config.yaml"
 HS_CONF_DIR="/etc/headscale"
 HS_DATA_DIR="/var/lib/headscale"
@@ -15,34 +13,26 @@ HS_RUN_DIR="/var/run/headscale"
 HS_SOCK="/var/run/headscale/headscale.sock"
 HS_BIN="/usr/local/bin/headscale"
 
-# ========== FONCTIONS ==========
 fix_config() {
-    echo "🔧 Fixing Headscale configuration (with tagOwners)..."
-    
+    echo "🔧 Fixing Headscale configuration (DERP public + tagOwners)..."
     if [ ! -f "$HS_BIN" ]; then
-        exiterr "Headscale is not installed. Please run install-headscale.sh first."
+        exiterr "Headscale is not installed."
     fi
-    
-    echo "🛑 Stopping Headscale service..."
     systemctl stop headscale 2>/dev/null || true
-    
-    echo "📁 Creating necessary directories..."
     mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR" "$HS_CONF_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
-    
+
     if [ -f "$HS_CONF" ]; then
-        local backup="${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
-        cp "$HS_CONF" "$backup"
-        echo "💾 Configuration backed up to $backup"
+        cp "$HS_CONF" "${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
+        echo "💾 Backup created."
     fi
-    
+
     local server_url="http://$(hostname -I | awk '{print $1}'):8080"
     if [ -f "${HS_CONF}.old" ]; then
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
-    
-    echo "📝 Creating new configuration file (with tagOwners)..."
+
     cat > "$HS_CONF" <<EOF
 server_url: ${server_url}
 listen_addr: 0.0.0.0:8080
@@ -71,6 +61,13 @@ dns:
       - 1.1.1.1
       - 1.0.0.1
 
+derp:
+  server:
+    enabled: false
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+  auto_update: true
+
 policy:
   mode: file
   path: ${HS_CONF_DIR}/acl_policy.hujson
@@ -86,7 +83,6 @@ prefixes:
 default_preauth_key_expiry: 24h
 EOF
 
-    echo "📝 Updating ACL policy with tagOwners..."
     cat > "${HS_CONF_DIR}/acl_policy.hujson" <<'EOF'
 {
   "groups": {
@@ -116,22 +112,15 @@ EOF
 }
 EOF
 
-    echo "🔑 Setting correct permissions..."
     chown root:headscale "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
     chmod 640 "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
-    
-    echo "📋 Permissions vérifiées:"
-    ls -la "$HS_CONF"
-    ls -la "${HS_CONF_DIR}/acl_policy.hujson"
-    
-    echo "✅ Configuration updated!"
+    echo "✅ Configuration updated with DERP public + tagOwners."
 }
 
 diagnose_headscale() {
     echo ""
     echo "📋 Headscale Diagnostics:"
     echo "========================"
-    echo "Service status:"
     systemctl status headscale.service --no-pager -l 2>/dev/null || echo "Service not found"
     echo ""
     echo "Last 20 log lines:"
@@ -146,94 +135,25 @@ diagnose_headscale() {
     echo "Configuration file permissions:"
     ls -la "$HS_CONF" 2>/dev/null || echo "Config not found"
     echo ""
-    echo "Database section:"
-    grep -A 5 "^database:" "$HS_CONF" 2>/dev/null || echo "database section not found"
-    echo ""
-    echo "DNS section:"
-    grep -A 6 "^dns:" "$HS_CONF" 2>/dev/null || echo "dns section not found"
-    echo ""
-    echo "Prefixes:"
-    grep -A 2 "^prefixes:" "$HS_CONF" 2>/dev/null || echo "prefixes not found"
-    echo ""
-    echo "ACL policy (tagOwners):"
-    grep -A 3 '"tagOwners":' "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || echo "tagOwners not found"
+    echo "DERP section:"
+    grep -A 5 "^derp:" "$HS_CONF" 2>/dev/null || echo "DERP section not found"
 }
 
 restart_headscale() {
-    echo "🔄 Restarting Headscale service..."
-    
-    mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR"
-    chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
-    chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
-    
-    if [ -f "$HS_CONF" ]; then
-        echo "🔑 Checking permissions..."
-        chown root:headscale "$HS_CONF" 2>/dev/null || true
-        chmod 640 "$HS_CONF" 2>/dev/null || true
-        chown root:headscale "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || true
-        chmod 640 "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || true
-        echo "📋 Configuration permissions:"
-        ls -la "$HS_CONF"
-    fi
-    
+    echo "🔄 Restarting Headscale..."
+    mkdir -p "$HS_RUN_DIR"
+    chown headscale:headscale "$HS_RUN_DIR"
+    chmod 750 "$HS_RUN_DIR"
     systemctl daemon-reload
     systemctl restart headscale
     sleep 5
-    
-    if systemctl is-active --quiet headscale.service; then
-        echo "✅ Headscale is now running!"
-        echo ""
-        echo "🔍 Service status:"
-        systemctl status headscale.service --no-pager
-        echo ""
-        echo "🔗 Socket:"
-        ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found (waiting for service)"
-        echo ""
-        echo "📋 Test command:"
-        sudo headscale -c "$HS_CONF" users list 2>&1 | head -5
-    else
-        echo "⚠️  Headscale failed to start. Manual test:"
-        sudo -u headscale /usr/local/bin/headscale serve -c "$HS_CONF" 2>&1 | head -15
-        echo ""
-        echo "📋 Check logs:"
-        journalctl -u headscale.service --no-pager -n 20
-    fi
+    systemctl status headscale --no-pager
+    ls -la "$HS_SOCK" 2>/dev/null || echo "Socket not found"
 }
 
-# ========== MAIN ==========
-echo ""
-echo "🔧 Headscale Config Fixer v1.12"
-echo "============================================================"
-echo ""
-
-if [ "$1" = "--diagnose" ]; then
-    diagnose_headscale
-    exit 0
-fi
-
-if [ "$1" = "--restart" ]; then
-    restart_headscale
-    exit 0
-fi
-
-if [ "$1" = "--fix" ] || [ -f "$HS_CONF" ]; then
-    fix_config
-    echo ""
-    read -rp "Restart Headscale service now? (y/N): " restart
-    if [[ $restart =~ ^[Yy] ]]; then
-        restart_headscale
-    fi
-    echo ""
-    echo "✅ Fix completed!"
-    echo "🔍 Run with --diagnose to verify"
-    echo "🔧 Run with --restart to start the service"
-    exit 0
-fi
-
-echo "Usage:"
-echo "  sudo bash fix-headscale.sh --fix      Fix Headscale configuration"
-echo "  sudo bash fix-headscale.sh --diagnose Run diagnostics"
-echo "  sudo bash fix-headscale.sh --restart  Restart Headscale service"
-echo ""
-echo "If Headscale is not installed, run install-headscale.sh first."
-exit 0
+case "$1" in
+    --fix)   fix_config ;;
+    --diagnose) diagnose_headscale ;;
+    --restart) restart_headscale ;;
+    *) echo "Usage: $0 --fix|--diagnose|--restart" ;;
+esac
