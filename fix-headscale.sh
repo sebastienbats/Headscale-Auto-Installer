@@ -1,5 +1,5 @@
 #!/bin/bash
-# Headscale Config Fixer v1.8 – Utilise la nouvelle syntaxe de configuration (database, policy, prefixes)
+# Headscale Config Fixer v1.9 – Utilise la nouvelle syntaxe de configuration (database, policy, prefixes) compatible v0.29.3+
 # Licensed under MIT License
 
 set -e
@@ -41,7 +41,7 @@ fix_config() {
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
     
-    echo "📝 Creating new configuration file (compatible v0.29.2+)..."
+    echo "📝 Creating new configuration file (compatible v0.29.3+)..."
     cat > "$HS_CONF" <<EOF
 server_url: ${server_url}
 listen_addr: 0.0.0.0:8080
@@ -190,7 +190,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.8"
+echo "🔧 Headscale Config Fixer v1.9"
 echo "============================================================"
 echo ""
 
