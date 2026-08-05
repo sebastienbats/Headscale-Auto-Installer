@@ -40,7 +40,7 @@ Headscale-Auto-Installer/
     ├── Dockerfile                # Construction de l’image Headscale
     ├── docker-compose.yml        # Orchestration Headscale + UI + Caddy
     ├── config/                   # Fichiers de configuration pour le conteneur
-    │   ├── config.yaml           # Configuration Headscale (compatible v0.29.2+)
+    │   ├── config.yaml           # Configuration Headscale (compatible v0.29.3+)
     │   └── acl_policy.hujson     # Politique ACL avec autoApprovers et randomizeClientPort
     ├── caddy/                    # Reverse proxy Caddy
     │   └── Caddyfile             # Routage vers Headscale et l’UI
