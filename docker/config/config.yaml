@@ -5,22 +5,36 @@ grpc_listen_addr: 0.0.0.0:50443
 grpc_allow_insecure: false
 
 private_key_path: /var/lib/headscale/private.key
-db_type: sqlite3
-db_path: /var/lib/headscale/db.sqlite
-base_domain: ${HS_BASE_DOMAIN:-headscale.internal}
 
-dns_config:
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+
+database:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+    write_ahead_log: true
+    wal_autocheckpoint: 1000
+
+dns:
+  magic_dns: true
+  base_domain: ${HS_BASE_DOMAIN:-headscale.internal}
+  override_local_dns: true
   nameservers:
-    - ${HS_DNS1:-1.1.1.1}
-    - ${HS_DNS2:-1.0.0.1}
+    global:
+      - ${HS_DNS1:-1.1.1.1}
+      - ${HS_DNS2:-1.0.0.1}
 
-acl_policy_path: /etc/headscale/acl_policy.hujson
-log_level: ${HS_LOG_LEVEL:-info}
-log_format: text
+policy:
+  mode: file
+  path: /etc/headscale/acl_policy.hujson
 
-ip_prefixes:
-  - fd7a:115c:a1e0::/48
-  - 100.64.0.0/10
+log:
+  level: ${HS_LOG_LEVEL:-info}
+  format: text
+
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
 
 default_preauth_key_expiry: 24h
-randomize_client_port: false
