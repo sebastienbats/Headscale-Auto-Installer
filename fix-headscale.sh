@@ -1,6 +1,7 @@
 #!/bin/bash
-# Headscale Config Fixer v1.10 – Corrige la configuration pour Headscale 0.29.3+
-# Ajoute dns.magic_dns, dns.base_domain et structure database
+# Headscale Config Fixer v1.11 – Corrige la configuration pour Headscale v0.29.3+
+# Adapté de l'exemple officiel (dns, database, policy)
+# Utilise admin@headscale.internal comme utilisateur par défaut
 # Licensed under MIT License
 
 set -e
@@ -65,6 +66,7 @@ database:
 dns:
   magic_dns: true
   base_domain: headscale.internal
+  override_local_dns: true
   nameservers:
     global:
       - 1.1.1.1
@@ -89,7 +91,7 @@ EOF
     cat > "${HS_CONF_DIR}/acl_policy.hujson" <<'EOF'
 {
   "groups": {
-    "group:admins": ["admin"]
+    "group:admins": ["admin@headscale.internal"]
   },
   "hosts": {},
   "acls": [
@@ -194,7 +196,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.10"
+echo "🔧 Headscale Config Fixer v1.11"
 echo "============================================================"
 echo ""
 
