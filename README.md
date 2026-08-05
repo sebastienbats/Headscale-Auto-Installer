@@ -241,9 +241,21 @@ sudo journalctl -u headscale.service -n 50 -f
 sudo -u headscale /usr/local/bin/headscale serve -c /etc/headscale/config.yaml 2>&1 | head -50
 
 # Commandes Headscale
-headscale -c /etc/headscale/config.yaml users list
-headscale -c /etc/headscale/config.yaml nodes list
-headscale -c /etc/headscale/config.yaml preauthkeys create --user admin@headscale.internal --reusable --expiration 90d
+sudo -u headscale -c /etc/headscale/config.yaml users list
+sudo -u headscale -c /etc/headscale/config.yaml nodes list
+sudo -u headscale -c /etc/headscale/config.yaml preauthkeys create --user admin@headscale.internal --reusable --expiration 90d
+# Arrêter / Démarrer
+sudo systemctl stop headscale
+sudo systemctl start headscale
+
+# Lister les utilisateurs
+sudo headscale -c /etc/headscale/config.yaml users list
+
+# Créer un utilisateur
+sudo headscale -c /etc/headscale/config.yaml users create nouveluser@domaine.com
+
+# Créer une clé
+sudo headscale -c /etc/headscale/config.yaml preauthkeys create --user admin@headscale.internal --reusable --expiration 90d
 ```
 
 ## 📜 Licence
