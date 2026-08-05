@@ -1,7 +1,6 @@
 #!/bin/bash
-# Headscale Config Fixer v1.11 – Corrige la configuration pour Headscale v0.29.3+
-# Adapté de l'exemple officiel (dns, database, policy)
-# Utilise admin@headscale.internal comme utilisateur par défaut
+# Headscale Config Fixer v1.12 – Ajoute tagOwners pour autoApprovers
+# Configuration compatible Headscale v0.29.3+
 # Licensed under MIT License
 
 set -e
@@ -18,32 +17,32 @@ HS_BIN="/usr/local/bin/headscale"
 
 # ========== FONCTIONS ==========
 fix_config() {
-    echo "🔧 Fixing Headscale configuration (v0.29.3+ compatible)..."
-
+    echo "🔧 Fixing Headscale configuration (with tagOwners)..."
+    
     if [ ! -f "$HS_BIN" ]; then
         exiterr "Headscale is not installed. Please run install-headscale.sh first."
     fi
-
+    
     echo "🛑 Stopping Headscale service..."
     systemctl stop headscale 2>/dev/null || true
-
+    
     echo "📁 Creating necessary directories..."
     mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR" "$HS_CONF_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
-
+    
     if [ -f "$HS_CONF" ]; then
         local backup="${HS_CONF}.old.$(date +%Y%m%d_%H%M%S)"
         cp "$HS_CONF" "$backup"
         echo "💾 Configuration backed up to $backup"
     fi
-
+    
     local server_url="http://$(hostname -I | awk '{print $1}'):8080"
     if [ -f "${HS_CONF}.old" ]; then
         server_url=$(grep "^server_url:" "${HS_CONF}.old" 2>/dev/null | awk '{print $2}' || echo "$server_url")
     fi
-
-    echo "📝 Creating new configuration file (definitive syntax)..."
+    
+    echo "📝 Creating new configuration file (with tagOwners)..."
     cat > "$HS_CONF" <<EOF
 server_url: ${server_url}
 listen_addr: 0.0.0.0:8080
@@ -87,11 +86,15 @@ prefixes:
 default_preauth_key_expiry: 24h
 EOF
 
-    echo "📝 Updating ACL policy..."
+    echo "📝 Updating ACL policy with tagOwners..."
     cat > "${HS_CONF_DIR}/acl_policy.hujson" <<'EOF'
 {
   "groups": {
     "group:admins": ["admin@headscale.internal"]
+  },
+  "tagOwners": {
+    "tag:gateway": ["group:admins"],
+    "tag:exit-node": ["group:admins"]
   },
   "hosts": {},
   "acls": [
@@ -116,11 +119,11 @@ EOF
     echo "🔑 Setting correct permissions..."
     chown root:headscale "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
     chmod 640 "$HS_CONF" "${HS_CONF_DIR}/acl_policy.hujson"
-
+    
     echo "📋 Permissions vérifiées:"
     ls -la "$HS_CONF"
     ls -la "${HS_CONF_DIR}/acl_policy.hujson"
-
+    
     echo "✅ Configuration updated!"
 }
 
@@ -151,15 +154,18 @@ diagnose_headscale() {
     echo ""
     echo "Prefixes:"
     grep -A 2 "^prefixes:" "$HS_CONF" 2>/dev/null || echo "prefixes not found"
+    echo ""
+    echo "ACL policy (tagOwners):"
+    grep -A 3 '"tagOwners":' "${HS_CONF_DIR}/acl_policy.hujson" 2>/dev/null || echo "tagOwners not found"
 }
 
 restart_headscale() {
     echo "🔄 Restarting Headscale service..."
-
+    
     mkdir -p "$HS_DATA_DIR" "$HS_RUN_DIR"
     chown headscale:headscale "$HS_DATA_DIR" "$HS_RUN_DIR"
     chmod 750 "$HS_DATA_DIR" "$HS_RUN_DIR"
-
+    
     if [ -f "$HS_CONF" ]; then
         echo "🔑 Checking permissions..."
         chown root:headscale "$HS_CONF" 2>/dev/null || true
@@ -169,11 +175,11 @@ restart_headscale() {
         echo "📋 Configuration permissions:"
         ls -la "$HS_CONF"
     fi
-
+    
     systemctl daemon-reload
     systemctl restart headscale
     sleep 5
-
+    
     if systemctl is-active --quiet headscale.service; then
         echo "✅ Headscale is now running!"
         echo ""
@@ -196,7 +202,7 @@ restart_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🔧 Headscale Config Fixer v1.11"
+echo "🔧 Headscale Config Fixer v1.12"
 echo "============================================================"
 echo ""
 
