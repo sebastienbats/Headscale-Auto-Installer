@@ -1,6 +1,7 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.6 – Linux
-# Utilise la nouvelle syntaxe de configuration (database, policy, prefixes) compatible v0.29.2+
+# Headscale Auto-Installer v2.5.7 – Linux
+# Utilise la nouvelle syntaxe de configuration (database, policy, prefixes) compatible v0.29.3+
+# Version Headscale par défaut : 0.29.3
 # Licensed under MIT License
 
 set -e
@@ -11,7 +12,7 @@ exiterr3() { exiterr "'yum install' failed."; }
 exiterr4() { exiterr "'zypper install' failed."; }
 
 # ========== VERSION ET CHEMINS ==========
-HS_VERSION="0.29.2"
+HS_VERSION="0.29.3"  # Dernière version stable
 HS_CONF="/etc/headscale/config.yaml"
 HS_CONF_DIR="/etc/headscale"
 HS_DATA_DIR="/var/lib/headscale"
@@ -285,7 +286,7 @@ create_directories() {
     chown headscale:headscale "$HS_LOG"
 }
 
-# ========== CONFIGURATION DÉFINITIVE ==========
+# ========== CONFIGURATION DÉFINITIVE (compatible v0.29.3) ==========
 create_config() {
     cat > "$HS_CONF" <<EOF
 server_url: ${computed_server_url}
@@ -651,7 +652,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.6"
+echo "🚀 Headscale Auto-Installer v2.5.7"
 echo "============================================================"
 echo ""
 
