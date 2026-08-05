@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.5 – Linux
-# Configuration définitive avec syntaxe YAML validée (db_type: sqlite3, prefixes)
+# Headscale Auto-Installer v2.5.6 – Linux
+# Utilise la nouvelle syntaxe de configuration (database, policy, prefixes) compatible v0.29.2+
 # Licensed under MIT License
 
 set -e
@@ -299,8 +299,12 @@ private_key_path: ${HS_DATA_DIR}/private.key
 noise:
   private_key_path: ${HS_DATA_DIR}/noise_private.key
 
-db_type: sqlite3
-db_path: ${HS_DATA_DIR}/db.sqlite
+database:
+  type: sqlite
+  sqlite:
+    path: ${HS_DATA_DIR}/db.sqlite
+    write_ahead_log: true
+    wal_autocheckpoint: 1000
 
 base_domain: ${BASE_DOMAIN}
 
@@ -311,10 +315,12 @@ dns:
 ${DNS2:+      - ${DNS2}}
 
 policy:
+  mode: file
   path: ${HS_CONF_DIR}/acl_policy.hujson
 
 log:
   level: ${LOG_LEVEL}
+  format: text
 
 prefixes:
   v4: 100.64.0.0/10
@@ -645,7 +651,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.5"
+echo "🚀 Headscale Auto-Installer v2.5.6"
 echo "============================================================"
 echo ""
 
