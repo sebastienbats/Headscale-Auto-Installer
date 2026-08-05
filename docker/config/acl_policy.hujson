@@ -1,8 +1,14 @@
 {
-  "groups": { "group:admins": ["admin"] },
+  "groups": {
+    "group:admins": ["admin@headscale.internal"]
+  },
   "hosts": {},
   "acls": [
-    { "action": "accept", "src": ["*"], "dst": ["*:*"] }
+    {
+      "action": "accept",
+      "src": ["*"],
+      "dst": ["*:*"]
+    }
   ],
   "tests": [],
   "autoApprovers": {
@@ -11,5 +17,6 @@
       "0.0.0.0/0": ["tag:gateway"],
       "::/0": ["tag:gateway"]
     }
-  }
+  },
+  "randomizeClientPort": false
 }
