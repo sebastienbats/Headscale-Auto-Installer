@@ -1,6 +1,7 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.12 – Linux
-# Configuration DERP public (Tailscale) + tagOwners
+# Headscale Auto-Installer v2.5.14 – Linux
+# Version fixe de Headscale-UI : 2026.03.17
+# Configuration DERP public + tagOwners
 # Utilise admin@headscale.internal comme utilisateur par défaut
 # Licensed under MIT License
 
@@ -13,6 +14,7 @@ exiterr4() { exiterr "'zypper install' failed."; }
 
 # ========== VERSION ET CHEMINS ==========
 HS_VERSION="0.29.3"
+UI_VERSION="2026.03.17"          # Version fixe de Headscale-UI
 HS_CONF="/etc/headscale/config.yaml"
 HS_CONF_DIR="/etc/headscale"
 HS_DATA_DIR="/var/lib/headscale"
@@ -517,50 +519,53 @@ generate_api_key_for_ui() {
     fi
 }
 
-finish_setup() {
-    echo ""
-    echo "============================================================"
-    if systemctl is-active --quiet headscale.service; then
-        echo "✅ Installation completed successfully!"
-    else
-        echo "⚠️  Installation completed with warnings."
-        echo "   Headscale service is not running. Check:"
-        echo "   - systemctl status headscale"
-        echo "   - journalctl -u headscale.service -n 50"
-        echo ""
-        echo "   Try starting it manually:"
-        echo "   sudo systemctl start headscale"
-    fi
-    echo "============================================================"
-    echo ""
-    echo "🌐 Headscale server URL: $computed_server_url"
-    echo ""
-    echo "🔗 Connect a Tailscale client to this server:"
-    echo "   tailscale up --login-server $computed_server_url --authkey <key>"
-    echo ""
-    echo "🛠️  Manage this server by running this script again:"
-    echo "   sudo bash $0"
+# ========== FONCTION D'INSTALLATION UI (version fixe 2026.03.17) ==========
+install_headscale_ui() {
+    echo "🌐 Installing Headscale-UI ${UI_VERSION}..."
     
-    if [ "$INSTALL_UI" = 1 ]; then
-        echo ""
-        echo "🌐 Headscale-UI available at:"
-        echo "   https://hs.votredomaine.com/web (if using Docker with Caddy)"
-        echo "   or http://$(hostname -I | awk '{print $1}')/web (standalone)"
-        echo ""
-        echo "🔑 Configure the UI with the API key generated above."
+    UI_DIR="/var/www/headscale-ui"
+    NGINX_CONF="/etc/nginx/sites-available/headscale-ui"
+    
+    if ! command -v nginx >/dev/null 2>&1; then
+        echo "📦 Installing Nginx..."
+        case "$os" in
+            ubuntu|debian)
+                apt-get -y install nginx || exiterr "Failed to install Nginx."
+                ;;
+            almalinux|rocky|centos|rhel|fedora)
+                yum -y install nginx || exiterr "Failed to install Nginx."
+                ;;
+            opensuse)
+                zypper -n install nginx || exiterr "Failed to install Nginx."
+                ;;
+        esac
     fi
     
-    echo ""
-    if [ -z "$SERVER_URL" ] && check_ip "${public_ip:-$ip}" 2>/dev/null; then
-        echo "⚠️  NOTE: Using plain HTTP. For production, set up a TLS reverse proxy"
-        echo "   and re-run with --serverurl https://your-domain.example.com"
+    echo "📥 Downloading Headscale-UI ${UI_VERSION}..."
+    mkdir -p "$UI_DIR"
+    if ! wget -qO- "https://github.com/gurucomputing/headscale-ui/releases/download/${UI_VERSION}/headscale-ui.tar.gz" | tar -xz -C "$UI_DIR"; then
+        exiterr "Failed to download Headscale-UI."
     fi
-    echo "============================================================"
-}
+    
+    echo "⚙️  Configuring Nginx..."
+    cat > "$NGINX_CONF" <<EOF
+server {
+    listen 80;
+    server_name _;
 
-check_ip() {
-    IP_REGEX='^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
-    printf '%s' "$1" | tr -d '\n' | grep -Eq "$IP_REGEX"
+    location /web/ {
+        alias $UI_DIR/;
+        try_files \$uri \$uri/ =404;
+    }
+}
+EOF
+    
+    ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/ 2>/dev/null || true
+    systemctl reload nginx 2>/dev/null || systemctl restart nginx
+    
+    echo "✅ Headscale-UI installed successfully!"
+    echo "🌐 Access UI at: http://$(hostname -I | awk '{print $1}')/web"
+    echo "ℹ️  Don't forget to generate an API key: headscale -c $HS_CONF apikeys create -e 9999d"
 }
 
 # ========== FONCTION DE MISE À JOUR ==========
@@ -584,55 +589,6 @@ upgrade_headscale() {
     start_hs_service
     echo "✅ Upgrade completed successfully to version $latest_version."
     echo "💾 Backup of previous configuration is kept in $HS_CONF_DIR/backup_*"
-}
-
-# ========== FONCTION D'INSTALLATION UI ==========
-install_headscale_ui() {
-    echo "🌐 Installing Headscale-UI..."
-    UI_VERSION="latest"
-    UI_DIR="/var/www/headscale-ui"
-    NGINX_CONF="/etc/nginx/sites-available/headscale-ui"
-    
-    if ! command -v nginx >/dev/null 2>&1; then
-        echo "📦 Installing Nginx..."
-        case "$os" in
-            ubuntu|debian)
-                apt-get -y install nginx || exiterr "Failed to install Nginx."
-                ;;
-            almalinux|rocky|centos|rhel|fedora)
-                yum -y install nginx || exiterr "Failed to install Nginx."
-                ;;
-            opensuse)
-                zypper -n install nginx || exiterr "Failed to install Nginx."
-                ;;
-        esac
-    fi
-    
-    echo "📥 Downloading Headscale-UI..."
-    mkdir -p "$UI_DIR"
-    wget -qO- "https://github.com/gurucomputing/headscale-ui/releases/download/${UI_VERSION}/headscale-ui.tar.gz" | tar -xz -C "$UI_DIR" || {
-        exiterr "Failed to download Headscale-UI."
-    }
-    
-    echo "⚙️  Configuring Nginx..."
-    cat > "$NGINX_CONF" <<EOF
-server {
-    listen 80;
-    server_name _;
-
-    location /web/ {
-        alias $UI_DIR/;
-        try_files \$uri \$uri/ =404;
-    }
-}
-EOF
-    
-    ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/ 2>/dev/null || true
-    systemctl reload nginx 2>/dev/null || systemctl restart nginx
-    
-    echo "✅ Headscale-UI installed successfully!"
-    echo "🌐 Access UI at: http://$(hostname -I | awk '{print $1}')/web"
-    echo "ℹ️  Don't forget to generate an API key: headscale -c $HS_CONF apikeys create -e 9999d"
 }
 
 # ========== DIAGNOSTIC ==========
@@ -664,7 +620,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.12"
+echo "🚀 Headscale Auto-Installer v2.5.14"
 echo "============================================================"
 echo ""
 
