@@ -1,6 +1,6 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.10 – Linux
-# Configuration finale avec tagOwners pour autoApprovers
+# Headscale Auto-Installer v2.5.12 – Linux
+# Configuration DERP public (Tailscale) + tagOwners
 # Utilise admin@headscale.internal comme utilisateur par défaut
 # Licensed under MIT License
 
@@ -286,7 +286,7 @@ create_directories() {
     chown headscale:headscale "$HS_LOG"
 }
 
-# ========== CONFIGURATION DÉFINITIVE ==========
+# ========== CONFIGURATION DÉFINITIVE (DERP public) ==========
 create_config() {
     cat > "$HS_CONF" <<EOF
 server_url: ${computed_server_url}
@@ -315,6 +315,13 @@ dns:
     global:
       - ${DNS1}
 ${DNS2:+      - ${DNS2}}
+
+derp:
+  server:
+    enabled: false
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+  auto_update: true
 
 policy:
   mode: file
@@ -657,7 +664,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.10"
+echo "🚀 Headscale Auto-Installer v2.5.12"
 echo "============================================================"
 echo ""
 
