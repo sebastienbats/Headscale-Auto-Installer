@@ -1,7 +1,7 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.21 – Linux
-# Version Headscale-UI : 2026.03.17 (build précompilé, détection du dossier web/)
-# Configuration Nginx avec root, suppression du site par défaut
+# Headscale Auto-Installer v2.5.22 – Linux
+# Version Headscale-UI : 2026.03.17 (build précompilé)
+# Configuration Nginx avec proxy API vers Headscale
 # Licensed under MIT License
 
 set -e
@@ -519,7 +519,7 @@ generate_api_key_for_ui() {
     fi
 }
 
-# ========== FONCTION D'INSTALLATION UI (CORRIGÉE DÉFINITIVE) ==========
+# ========== FONCTION D'INSTALLATION UI (AVEC PROXY API) ==========
 install_headscale_ui() {
     echo "🌐 Installing Headscale-UI ${UI_VERSION}..."
 
@@ -594,7 +594,7 @@ install_headscale_ui() {
         sudo rm -f /etc/nginx/sites-enabled/default
     fi
 
-    echo "⚙️  Configuring Nginx (using root)..."
+    echo "⚙️  Configuring Nginx (with API proxy)..."
     cat > "$NGINX_CONF" <<EOF
 server {
     listen 80 default_server;
@@ -605,6 +605,15 @@ server {
 
     location /web/ {
         try_files \$uri \$uri/ =404;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:${PORT}/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
@@ -675,7 +684,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.21"
+echo "🚀 Headscale Auto-Installer v2.5.22"
 echo "============================================================"
 echo ""
 
