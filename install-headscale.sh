@@ -1,7 +1,7 @@
 #!/bin/bash
-# Headscale Auto-Installer v2.5.18 – Linux
-# Version Headscale-UI : 2026.03.17 (build précompilé en ZIP)
-# Installation automatique de unzip
+# Headscale Auto-Installer v2.5.19 – Linux
+# Version Headscale-UI : 2026.03.17 (build précompilé dans dossier web/)
+# Détection automatique du dossier web/ et déplacement à la racine
 # Licensed under MIT License
 
 set -e
@@ -519,7 +519,7 @@ generate_api_key_for_ui() {
     fi
 }
 
-# ========== FONCTION D'INSTALLATION UI (build précompilé en ZIP) ==========
+# ========== FONCTION D'INSTALLATION UI (CORRIGÉE) ==========
 install_headscale_ui() {
     echo "🌐 Installing Headscale-UI ${UI_VERSION}..."
 
@@ -527,24 +527,24 @@ install_headscale_ui() {
     NGINX_CONF="/etc/nginx/sites-available/headscale-ui"
     TMP_ARCHIVE="/tmp/headscale-ui-${UI_VERSION}.zip"
 
-    # Vérifier et installer Nginx + unzip
+    # Installer Nginx, unzip, Node.js et npm si nécessaire
     if ! command -v nginx >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
-        echo "📦 Installing Nginx and unzip..."
+        echo "📦 Installing required packages (nginx, unzip)..."
         case "$os" in
             ubuntu|debian)
                 apt-get -y update
-                apt-get -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
+                apt-get -y install nginx unzip || exiterr "Failed to install dependencies."
                 ;;
             almalinux|rocky|centos|rhel|fedora)
                 if [[ "$os" == "fedora" ]]; then
-                    dnf -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
+                    dnf -y install nginx unzip || exiterr "Failed to install dependencies."
                 else
                     yum -y install epel-release || true
-                    yum -y install nginx unzip || exiterr "Failed to install Nginx or unzip."
+                    yum -y install nginx unzip || exiterr "Failed to install dependencies."
                 fi
                 ;;
             opensuse)
-                zypper -n install nginx unzip || exiterr "Failed to install Nginx or unzip."
+                zypper -n install nginx unzip || exiterr "Failed to install dependencies."
                 ;;
         esac
     fi
@@ -563,22 +563,63 @@ install_headscale_ui() {
     fi
     rm -f "$TMP_ARCHIVE"
 
-    # Si les fichiers sont dans un dossier "dist" (ou "build"), les remonter à la racine
-    if [ -d "$UI_DIR/dist" ]; then
-        echo "📁 Moving files from dist/ to root..."
-        mv "$UI_DIR/dist"/* "$UI_DIR/"
-        rmdir "$UI_DIR/dist"
-    fi
-    if [ -d "$UI_DIR/build" ]; then
-        echo "📁 Moving files from build/ to root..."
-        mv "$UI_DIR/build"/* "$UI_DIR/"
-        rmdir "$UI_DIR/build"
+    # Si l'archive contient un sous-dossier (ex: headscale-ui-2026.03.17), déplacer son contenu à la racine
+    if [ -d "$UI_DIR/headscale-ui-${UI_VERSION}" ]; then
+        mv "$UI_DIR/headscale-ui-${UI_VERSION}"/* "$UI_DIR/"
+        rmdir "$UI_DIR/headscale-ui-${UI_VERSION}"
     fi
 
-    # Vérifier que l'index existe
+    # Si un dossier "web" existe et contient les fichiers compilés, déplacer son contenu à la racine
+    if [ -d "$UI_DIR/web" ] && [ -f "$UI_DIR/web/index.html" ]; then
+        echo "📁 Moving compiled files from web/ to root..."
+        mv "$UI_DIR/web"/* "$UI_DIR/"
+        rmdir "$UI_DIR/web"
+    fi
+
+    # Vérifier si index.html existe maintenant
     if [ ! -f "$UI_DIR/index.html" ]; then
-        echo "⚠️  Warning: index.html not found. Files present:"
+        # Fallback : tenter de compiler depuis le source
+        echo "🔨 No prebuilt index.html found, building from source..."
+        if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+            echo "📦 Installing Node.js and npm..."
+            case "$os" in
+                ubuntu|debian)
+                    apt-get -y install nodejs npm || exiterr "Failed to install Node.js."
+                    ;;
+                almalinux|rocky|centos|rhel|fedora)
+                    if [[ "$os" == "fedora" ]]; then
+                        dnf -y install nodejs npm || exiterr "Failed to install Node.js."
+                    else
+                        yum -y install epel-release || true
+                        yum -y install nodejs npm || exiterr "Failed to install Node.js."
+                    fi
+                    ;;
+                opensuse)
+                    zypper -n install nodejs npm || exiterr "Failed to install Node.js."
+                    ;;
+            esac
+        fi
+        cd "$UI_DIR"
+        npm install --no-audit --no-fund || exiterr "npm install failed."
+        npm run build || exiterr "npm run build failed."
+        # Déplacer le build
+        if [ -d "$UI_DIR/build" ]; then
+            mv "$UI_DIR/build"/* "$UI_DIR/"
+            rmdir "$UI_DIR/build"
+        elif [ -d "$UI_DIR/dist" ]; then
+            mv "$UI_DIR/dist"/* "$UI_DIR/"
+            rmdir "$UI_DIR/dist"
+        else
+            exiterr "Build directory not found after npm run build."
+        fi
+        cd - >/dev/null
+    fi
+
+    # Vérification finale
+    if [ ! -f "$UI_DIR/index.html" ]; then
+        echo "❌ Error: index.html still not found. Files present:"
         ls -la "$UI_DIR"
+        exiterr "Headscale-UI installation failed."
     fi
 
     echo "⚙️  Configuring Nginx..."
@@ -654,7 +695,7 @@ diagnose_headscale() {
 
 # ========== MAIN ==========
 echo ""
-echo "🚀 Headscale Auto-Installer v2.5.18"
+echo "🚀 Headscale Auto-Installer v2.5.19"
 echo "============================================================"
 echo ""
 
