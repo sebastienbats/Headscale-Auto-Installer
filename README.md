@@ -123,7 +123,7 @@ sudo bash fix-headscale.sh --diagnose
 sudo bash fix-headscale.sh --restart
 ```
 
-## 🌐 Interface Web (Headscale-UI)
+## 🌐 Interface Web (Headscale-UI 2026.03.17)
 L’interface Web vous permet de gérer vos utilisateurs, nœuds et clés sans ligne de commande.
 
 ### Avec Docker
